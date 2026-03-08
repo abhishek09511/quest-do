@@ -6,6 +6,9 @@
   <title>Quest Do - Gamified To-Do</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%23a66cff'/%3E%3Cstop offset='100%25' stop-color='%23ff6e6e'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='14' fill='url(%23g)'/%3E%3Crect x='14' y='12' width='36' height='40' rx='6' fill='white' opacity='0.95'/%3E%3Ccircle cx='23' cy='24' r='4' fill='%2317c3b2'/%3E%3Cpath d='M21 24l1.5 1.5L25.5 22' stroke='white' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Crect x='31' y='22' width='14' height='3' rx='1.5' fill='%23a66cff' opacity='0.7'/%3E%3Ccircle cx='23' cy='34' r='4' fill='%23ffc857'/%3E%3Cpath d='M21 34l1.5 1.5L25.5 32' stroke='white' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Crect x='31' y='32' width='10' height='3' rx='1.5' fill='%23ffc857' opacity='0.7'/%3E%3Ccircle cx='23' cy='44' r='4' fill='%23ff6e6e' opacity='0.4'/%3E%3Crect x='31' y='42' width='12' height='3' rx='1.5' fill='%23ff6e6e' opacity='0.3'/%3E%3C/svg%3E">
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap');
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -249,11 +252,11 @@
     .task-text { font-size: 15px; font-weight: 500; transition: all 0.2s; }
     .task-card.done .task-text { text-decoration: line-through; color: var(--text-muted); }
     .task-meta { display: flex; gap: 6px; margin-top: 3px; flex-wrap: wrap; align-items: center; }
-    .task-deadline { font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; }
-    .task-deadline.overdue { color: var(--accent); }
-    .task-deadline.urgent { color: var(--accent2); }
-    .task-deadline.normal { color: var(--text-muted); }
-    .task-deadline.completed-deadline { color: var(--text-muted); }
+    .task-deadline { font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: var(--radius-pill); }
+    .task-deadline.overdue { color: #fff; background: var(--accent); }
+    .task-deadline.urgent { color: var(--bg); background: var(--accent2); }
+    .task-deadline.normal { color: var(--text-secondary); background: var(--surface2); }
+    .task-deadline.completed-deadline { color: var(--text-muted); background: none; }
     .deadline-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
     .deadline-dot.overdue-dot { background: var(--accent); }
     .deadline-dot.urgent-dot { background: var(--accent2); }
@@ -456,6 +459,26 @@
     .xp-popup { position: fixed; pointer-events: none; font-weight: 700; font-size: 20px; color: var(--accent2); z-index: 999; animation: xpFloat 1s ease forwards; }
     @keyframes xpFloat { 0% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(-60px) scale(1.3); } }
 
+    /* ── Auth Bar ── */
+    .auth-bar { display: flex; align-items: center; gap: 10px; padding: 10px 8px; margin-bottom: 8px; border-radius: var(--radius-md); background: var(--surface2); }
+    .auth-bar img { width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0; }
+    .auth-bar .auth-name { flex: 1; font-size: 12px; font-weight: 600; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .auth-bar .auth-signout { background: none; border: none; color: var(--text-muted); font-size: 11px; cursor: pointer; padding: 4px 8px; border-radius: var(--radius-sm); transition: all var(--transition-fast); font-family: inherit; font-weight: 600; }
+    .auth-bar .auth-signout:hover { color: var(--accent); background: rgba(var(--accent-rgb), 0.1); }
+    .auth-bar .auth-signin-btn { flex: 1; padding: 8px 12px; border-radius: var(--radius-md); border: 1px solid var(--border-strong); background: var(--bg); color: var(--text); font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all var(--transition-fast); }
+    .auth-bar .auth-signin-btn:hover { border-color: var(--accent4); box-shadow: var(--input-focus-shadow); }
+    .auth-bar .auth-signin-btn svg { flex-shrink: 0; }
+
+    /* ── Sync Overlay ── */
+    .sync-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 200; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 16px; }
+    .sync-overlay .sync-spinner { width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--accent4); border-radius: 50%; animation: syncSpin 0.8s linear infinite; }
+    .sync-overlay .sync-label { color: #fff; font-size: 15px; font-weight: 600; }
+    @keyframes syncSpin { to { transform: rotate(360deg); } }
+
+    /* ── Sync Status ── */
+    .sync-status { position: fixed; bottom: 20px; right: 20px; background: var(--accent3); color: #fff; padding: 8px 16px; border-radius: var(--radius-pill); font-size: 12px; font-weight: 700; z-index: 150; opacity: 0; transform: translateY(10px); transition: all 0.3s ease; pointer-events: none; }
+    .sync-status.visible { opacity: 1; transform: translateY(0); }
+
     /* ── Mobile ── */
     .sidebar-toggle { display: none; position: fixed; top: 12px; left: 12px; z-index: 20; background: var(--surface); border: 1px solid var(--border); color: var(--text); font-size: 20px; padding: 8px 12px; border-radius: 10px; cursor: pointer; }
     @media (max-width: 700px) {
@@ -500,6 +523,7 @@
 
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-brand">&#9889; Quest Do</div>
+    <div class="auth-bar" id="authBar"></div>
     <div class="stats-bar">
       <div class="stat stat-xp"><div class="stat-value" id="statXp">0</div><div class="stat-label">XP</div></div>
       <div class="stat stat-streak"><div class="stat-value" id="statStreak">0&#128293;</div><div class="stat-label">Streak</div></div>
@@ -554,6 +578,7 @@
     </div>
     <div class="toolbar">
       <button class="toolbar-btn icon-only" id="sortDeadlineBtn" onclick="toggleSortDeadline()" title="Sort by deadline">&#8597;</button>
+      <button class="toolbar-btn icon-only" id="sortXpBtn" onclick="toggleSortXP()" title="Sort by XP">XP</button>
       <button class="toolbar-btn icon-btn" id="hideDoneBtn" onclick="toggleHideDone()" title="Hide completed tasks">&#10003;</button>
     </div>
     <ul class="task-list" id="taskList"></ul>
@@ -599,8 +624,26 @@
   </aside>
 
   <div id="modalContainer"></div>
+  <div class="sync-overlay" id="syncOverlay" style="display:none">
+    <div class="sync-spinner"></div>
+    <div class="sync-label">Syncing your quests...</div>
+  </div>
+  <div class="sync-status" id="syncStatus">&#10003; Synced</div>
 
   <script>
+    /* ── Firebase Init ── */
+    firebase.initializeApp({
+      apiKey: "AIzaSyBrvbpO8hv7h197o4ZM1n02PFcK6V-6NwM", authDomain: "quest-do.firebaseapp.com",
+      projectId: "quest-do", storageBucket: "quest-do.firebasestorage.app",
+      messagingSenderId: "128245807038", appId: "1:128245807038:web:f01137361b86def504abef"
+    });
+    var auth = firebase.auth();
+    var db = firebase.firestore();
+    db.enablePersistence().catch(function(err) { console.warn('Firestore persistence failed:', err.code); });
+    var currentUser = null;
+    var firestoreWriteTimer = null;
+    var DEBOUNCE_MS = 2000;
+
     /* ── Theme System ── */
     function getThemeName() { return document.documentElement.dataset.theme || 'glow'; }
     function getThemeMode() { return document.documentElement.dataset.mode || 'dark'; }
@@ -632,31 +675,137 @@
 
     /* ── State ── */
     var FOLDER_EMOJIS = ['\u{1F4C2}','\u{1F4BC}','\u{1F3E0}','\u{1F4DA}','\u{1F3C6}','\u{1F680}','\u{1F3A8}','\u{1F4AA}','\u2764\uFE0F','\u{1F48E}'];
-    var state = JSON.parse(localStorage.getItem('questdo') || 'null') || {
-      tasks: [], folders: ['Work', 'Personal'], xp: 0, totalDone: 0, streakDays: [],
-      activeFolder: '__all', sortByDeadline: false, pomoToday: '', pomoDayCount: 0
-    };
+
+    function getDefaultState() {
+      return { tasks: [], folders: ['Work', 'Personal'], xp: 0, totalDone: 0, streakDays: [],
+        activeFolder: '__all', sortByDeadline: false, sortByXP: false, pomoToday: '', pomoDayCount: 0, hideDone: false };
+    }
+    function migrateState(s) {
+      if (!s.tasks) s.tasks = [];
+      if (!s.folders) s.folders = ['Work', 'Personal'];
+      if (s.xp === undefined) s.xp = 0;
+      if (s.totalDone === undefined) s.totalDone = 0;
+      if (!s.streakDays) s.streakDays = [];
+      if (!s.activeFolder) s.activeFolder = '__all';
+      if (s.sortByDeadline === undefined) s.sortByDeadline = false;
+      if (!s.pomoToday) { s.pomoToday = ''; s.pomoDayCount = 0; }
+      if (s.hideDone === undefined) s.hideDone = false;
+      if (s.sortByXP === undefined) s.sortByXP = false;
+      s.tasks.forEach(function(t) {
+        if (t.pomoCount === undefined) t.pomoCount = 0;
+        if (!t.subtasks) t.subtasks = [];
+        if (t.description === undefined) t.description = '';
+        if (t.comments === undefined) t.comments = '';
+        if (t.expanded === undefined) t.expanded = false;
+        if (t.baseXP === undefined) t.baseXP = 10;
+      });
+      s.tasks.sort(function(a, b) { return (a.done ? 1 : 0) - (b.done ? 1 : 0); });
+      return s;
+    }
+
+    var state = JSON.parse(localStorage.getItem('questdo') || 'null') || getDefaultState();
     if (!state.tasks && localStorage.getItem('tasks')) {
       var old = JSON.parse(localStorage.getItem('tasks'));
       state.tasks = old.map(function(t) { return { id: Date.now()+Math.random(), text: t.text, done: t.done, folder: '', deadline: null }; });
       localStorage.removeItem('tasks');
     }
-    // Migrate: ensure all fields on tasks
-    state.tasks.forEach(function(t) {
-      if (t.pomoCount === undefined) t.pomoCount = 0;
-      if (!t.subtasks) t.subtasks = [];
-      if (t.description === undefined) t.description = '';
-      if (t.comments === undefined) t.comments = '';
-      if (t.expanded === undefined) t.expanded = false;
-    });
-    if (!state.pomoToday) { state.pomoToday = ''; state.pomoDayCount = 0; }
-    if (state.hideDone === undefined) state.hideDone = false;
-    // Ensure done tasks are at the bottom of the array on load
-    state.tasks.sort(function(a, b) { return (a.done ? 1 : 0) - (b.done ? 1 : 0); });
-    save();
+    migrateState(state);
 
     var renamingFolder = null, draggedTaskId = null, detailTaskId = null, editingSubId = null, editingInlineSubId = null;
-    function save() { localStorage.setItem('questdo', JSON.stringify(state)); }
+    function save() {
+      localStorage.setItem('questdo', JSON.stringify(state));
+      if (currentUser) {
+        clearTimeout(firestoreWriteTimer);
+        firestoreWriteTimer = setTimeout(saveToFirestore, DEBOUNCE_MS);
+      }
+    }
+    function saveToFirestore() {
+      if (!currentUser) return;
+      db.collection('users').doc(currentUser.uid).set({
+        state: JSON.parse(JSON.stringify(state)),
+        lastModified: firebase.firestore.FieldValue.serverTimestamp(),
+        email: currentUser.email,
+        displayName: currentUser.displayName || ''
+      }).then(function() { showSyncStatus(); })
+        .catch(function(err) { console.error('Firestore save error:', err); });
+    }
+    function showSyncStatus() {
+      var el = document.getElementById('syncStatus');
+      el.classList.add('visible');
+      setTimeout(function() { el.classList.remove('visible'); }, 1500);
+    }
+
+    /* ── Auth ── */
+    function signInWithGoogle() {
+      var provider = new firebase.auth.GoogleAuthProvider();
+      auth.signInWithPopup(provider).catch(function(err) {
+        if (err.code !== 'auth/popup-closed-by-user') {
+          console.error('Sign-in error:', err);
+          showToast('Sign-in failed: ' + err.message);
+        }
+      });
+    }
+    var explicitSignOut = false;
+    function signOutUser() {
+      explicitSignOut = true;
+      auth.signOut().catch(function(err) { console.error('Sign-out error:', err); });
+    }
+    function renderAuthBar() {
+      var bar = document.getElementById('authBar');
+      if (currentUser) {
+        var photo = currentUser.photoURL ? '<img src="' + escapeAttr(currentUser.photoURL) + '" alt="">' : '';
+        var name = escapeHtml(currentUser.displayName || currentUser.email || 'User');
+        bar.innerHTML = photo +
+          '<span class="auth-name">' + name + '</span>' +
+          '<button class="auth-signout" onclick="signOutUser()">Sign out</button>';
+      } else {
+        bar.innerHTML = '<button class="auth-signin-btn" onclick="signInWithGoogle()">' +
+          '<svg width="16" height="16" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#34A853" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#FBBC05" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>' +
+          'Sign in with Google</button>';
+      }
+    }
+    function loadFromFirestore(uid) {
+      document.getElementById('syncOverlay').style.display = 'flex';
+      db.collection('users').doc(uid).get().then(function(doc) {
+        document.getElementById('syncOverlay').style.display = 'none';
+        if (doc.exists && doc.data().state) {
+          state = doc.data().state;
+          migrateState(state);
+          localStorage.setItem('questdo', JSON.stringify(state));
+          renderAll();
+          showSyncStatus();
+        } else {
+          // First-time user: migrate local data up to Firestore if present
+          var localData = JSON.parse(localStorage.getItem('questdo') || 'null');
+          if (localData && localData.tasks && localData.tasks.length > 0) {
+            state = localData;
+            migrateState(state);
+            saveToFirestore();
+          } else {
+            state = getDefaultState();
+            localStorage.setItem('questdo', JSON.stringify(state));
+          }
+          renderAll();
+        }
+      }).catch(function(err) {
+        document.getElementById('syncOverlay').style.display = 'none';
+        console.error('Firestore load error:', err);
+        showToast('Offline mode \u2014 using local data');
+        renderAll();
+      });
+    }
+    auth.onAuthStateChanged(function(user) {
+      currentUser = user;
+      if (user) {
+        loadFromFirestore(user.uid);
+      } else if (explicitSignOut) {
+        explicitSignOut = false;
+        state = getDefaultState();
+        localStorage.removeItem('questdo');
+        renderAll();
+      }
+      renderAuthBar();
+    });
 
     /* ── Levels ── */
     var LEVELS = [
@@ -689,7 +838,7 @@
 
     /* ── XP ── */
     function calcTaskXP(task) {
-      var xp = 10;
+      var xp = task.baseXP || 10;
       if (task.deadline) { var l = new Date(task.deadline)-new Date(); if (l<0) xp+=5; else if (l<3600000) xp+=15; else if (l<86400000) xp+=10; else xp+=5; }
       return xp;
     }
@@ -981,7 +1130,7 @@
       var dateVal = document.getElementById('dateInput').value, timeVal = document.getElementById('timeInput').value;
       var deadline = dateVal ? dateVal + (timeVal ? 'T' + timeVal : 'T23:59') : null;
       var folder = document.getElementById('folderSelect').value;
-      state.tasks.push({ id: Date.now()+Math.random(), text: text, done: false, folder: folder, deadline: deadline, createdAt: Date.now(), pomoCount: 0, subtasks: [], description: '', comments: '', expanded: false });
+      state.tasks.push({ id: Date.now()+Math.random(), text: text, done: false, folder: folder, deadline: deadline, createdAt: Date.now(), pomoCount: 0, subtasks: [], description: '', comments: '', expanded: false, baseXP: 10 });
       document.getElementById('taskInput').value = ''; clearDate(); closeDatePopover(); save(); renderAll();
     }
 
@@ -1023,7 +1172,7 @@
       var folderOpts = '<option value="">No folder</option>';
       state.folders.forEach(function(f) { folderOpts += '<option value="'+escapeAttr(f)+'"'+(task.folder===f?' selected':'')+'>'+escapeHtml(f)+'</option>'; });
       var container = document.getElementById('modalContainer');
-      container.innerHTML = '<div class="modal-overlay" id="editOverlay"><div class="modal"><h2>\u270F\uFE0F Edit Quest</h2><div class="modal-field"><label>Task name</label><input type="text" id="editText" value="'+escapeAttr(task.text)+'"></div><div class="modal-field"><label>Due date &amp; time</label><div class="field-row"><input type="date" id="editDate" value="'+dateVal+'"><input type="time" id="editTime" value="'+timeVal+'"></div></div><div class="modal-field"><label>Folder</label><select id="editFolder">'+folderOpts+'</select></div><div class="modal-actions"><button class="modal-btn-cancel" onclick="closeEditModal()">Cancel</button><button class="modal-btn-save" id="editSaveBtn">Save</button></div></div></div>';
+      container.innerHTML = '<div class="modal-overlay" id="editOverlay"><div class="modal"><h2>\u270F\uFE0F Edit Quest</h2><div class="modal-field"><label>Task name</label><input type="text" id="editText" value="'+escapeAttr(task.text)+'"></div><div class="modal-field"><label>Due date &amp; time</label><div class="field-row"><input type="date" id="editDate" value="'+dateVal+'"><input type="time" id="editTime" value="'+timeVal+'"></div></div><div class="modal-field"><label>Folder</label><select id="editFolder">'+folderOpts+'</select></div><div class="modal-field"><label>Base XP</label><input type="number" id="editBaseXP" value="'+(task.baseXP||10)+'" min="1" max="100"></div><div class="modal-actions"><button class="modal-btn-cancel" onclick="closeEditModal()">Cancel</button><button class="modal-btn-save" id="editSaveBtn">Save</button></div></div></div>';
       document.getElementById('editSaveBtn').addEventListener('click', function() { saveEdit(id); });
       document.getElementById('editOverlay').addEventListener('click', function(e) { if (e.target === this) closeEditModal(); });
       document.getElementById('editText').addEventListener('keydown', function(e) { if (e.key === 'Enter') saveEdit(id); if (e.key === 'Escape') closeEditModal(); });
@@ -1036,6 +1185,7 @@
       var dateVal = document.getElementById('editDate').value, timeVal = document.getElementById('editTime').value;
       task.deadline = dateVal ? dateVal + (timeVal ? 'T'+timeVal : 'T23:59') : null;
       task.folder = document.getElementById('editFolder').value;
+      task.baseXP = parseInt(document.getElementById('editBaseXP').value) || 10;
       closeEditModal(); save(); renderAll();
     }
     function closeEditModal() { document.getElementById('modalContainer').innerHTML = ''; }
@@ -1158,6 +1308,7 @@
           '<div class="detail-meta-row"><span class="meta-label">Status</span><span class="meta-value">' + statusDisplay + '</span></div>' +
           '<div class="detail-meta-row"><span class="meta-label">Folder</span><span class="meta-value">' + folderDisplay + '</span></div>' +
           '<div class="detail-meta-row"><span class="meta-label">Deadline</span><span class="meta-value">' + deadlineDisplay + '</span></div>' +
+          '<div class="detail-meta-row"><span class="meta-label">XP</span><span class="meta-value">' + calcTaskXP(task) + ' XP (base: ' + (task.baseXP || 10) + ')</span></div>' +
           (task.pomoCount > 0 ? '<div class="detail-meta-row"><span class="meta-label">Pomos</span><span class="meta-value">' + task.pomoCount + ' sessions</span></div>' : '') +
         '</div>' +
 
@@ -1217,7 +1368,8 @@
     }
 
     /* ── Sort ── */
-    function toggleSortDeadline() { state.sortByDeadline = !state.sortByDeadline; save(); renderAll(); }
+    function toggleSortDeadline() { state.sortByDeadline = !state.sortByDeadline; if (state.sortByDeadline) state.sortByXP = false; save(); renderAll(); }
+    function toggleSortXP() { state.sortByXP = !state.sortByXP; if (state.sortByXP) state.sortByDeadline = false; save(); renderAll(); }
     function toggleHideDone() { state.hideDone = !state.hideDone; save(); renderAll(); }
 
     /* ── Drag and Drop ── */
@@ -1275,7 +1427,12 @@
       var tasks = state.tasks;
       if (state.activeFolder !== '__all') tasks = tasks.filter(function(t) { return t.folder === state.activeFolder; });
       if (state.hideDone) tasks = tasks.filter(function(t) { return !t.done; });
-      if (state.sortByDeadline) {
+      if (state.sortByXP) {
+        tasks = tasks.slice().sort(function(a, b) {
+          if (a.done !== b.done) return a.done ? 1 : -1;
+          return calcTaskXP(b) - calcTaskXP(a);
+        });
+      } else if (state.sortByDeadline) {
         tasks = tasks.slice().sort(function(a, b) {
           if (a.done !== b.done) return a.done ? 1 : -1;
           if (a.deadline && !b.deadline) return -1; if (!a.deadline && b.deadline) return 1;
@@ -1345,6 +1502,7 @@
       var tasks = getVisibleTasks();
       emptyEl.style.display = tasks.length ? 'none' : 'block';
       document.getElementById('sortDeadlineBtn').className = 'toolbar-btn icon-only' + (state.sortByDeadline ? ' active' : '');
+      document.getElementById('sortXpBtn').className = 'toolbar-btn icon-only' + (state.sortByXP ? ' active' : '');
       var hideBtn = document.getElementById('hideDoneBtn');
       hideBtn.className = 'toolbar-btn icon-btn' + (state.hideDone ? ' active' : '');
       hideBtn.title = state.hideDone ? 'Show completed tasks' : 'Hide completed tasks';
@@ -1363,7 +1521,7 @@
           var subDone = task.subtasks.filter(function(s){return s.done;}).length;
           metaHtml += '<span class="subtask-count-badge">\u2610 '+subDone+'/'+task.subtasks.length+'</span>';
         }
-        if (task.done) metaHtml += '<span class="task-points">+'+calcTaskXP(task)+' XP earned</span>';
+        metaHtml += '<span class="task-points">' + (task.done ? '+' + calcTaskXP(task) + ' XP earned' : calcTaskXP(task) + ' XP') + '</span>';
 
         var bodyMeta = metaHtml ? '<div class="task-meta">'+metaHtml+'</div>' : '';
         var hasSubtasks = task.subtasks && task.subtasks.length > 0;
@@ -1450,7 +1608,7 @@
       });
     }
     function renderAll() {
-      renderFolderNav(); renderFolderSelect(); renderStats(); renderViewTitle(); renderTasks(); setupFolderDropTargets();
+      renderAuthBar(); renderFolderNav(); renderFolderSelect(); renderStats(); renderViewTitle(); renderTasks(); setupFolderDropTargets();
       if (document.getElementById('pomoPanel').classList.contains('open')) renderPomo();
       if (detailTaskId) renderDetail();
     }
