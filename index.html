@@ -1947,8 +1947,6 @@
 
         var metaHtml = '';
         if (task.deadline) { var cls = deadlineClass(task.deadline, task.done); metaHtml += '<span class="task-deadline '+cls+'">'+deadlineDot(task.deadline, task.done)+formatDeadline(task.deadline)+'</span>'; }
-        if (state.activeFolder === '__all' && task.folder) metaHtml += '<span class="task-folder-badge">'+getFolderEmoji(task.folder)+' '+escapeHtml(task.folder)+'</span>';
-        if (task.pomoCount > 0) metaHtml += '<span class="task-pomo-count">'+task.pomoCount+' pomo</span>';
         if (task.subtasks && task.subtasks.length > 0) {
           var subDone = task.subtasks.filter(function(s){return s.done;}).length;
           metaHtml += '<span class="subtask-count-badge">\u2610 '+subDone+'/'+task.subtasks.length+'</span>';
@@ -1966,8 +1964,12 @@
 
         var todayActive = isDeadlineToday(task.deadline) ? ' today-active' : '';
         var tomorrowActive = isDeadlineTomorrow(task.deadline) ? ' tomorrow-active' : '';
-        var quickDatesHtml = task.done ? '' :
+        var hoverInfoHtml = '';
+        if (state.activeFolder === '__all' && task.folder) hoverInfoHtml += '<span class="task-folder-badge">' + getFolderEmoji(task.folder) + ' ' + escapeHtml(task.folder) + '</span>';
+        if (task.pomoCount > 0) hoverInfoHtml += '<span class="task-pomo-count">' + task.pomoCount + ' pomo</span>';
+        var quickDatesHtml = task.done ? (hoverInfoHtml ? '<span class="task-quick-dates">' + hoverInfoHtml + '</span>' : '') :
           '<span class="task-quick-dates">' +
+            hoverInfoHtml +
             '<button class="task-quick-date' + todayActive + '" data-quick-date="today" title="Today">Today</button>' +
             '<button class="task-quick-date' + tomorrowActive + '" data-quick-date="tomorrow" title="Tmrw">Tmrw</button>' +
           '</span>';
