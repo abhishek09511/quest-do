@@ -235,7 +235,7 @@
 
     /* ── Task List ── */
     .task-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
-    .task-card { display: flex; align-items: center; gap: 10px; padding: var(--card-padding); background: var(--card-bg); border: 1px solid var(--card-border); border-radius: var(--card-radius); transition: all var(--transition-normal); animation: slideIn 0.3s ease; cursor: grab; }
+    .task-card { display: flex; align-items: center; gap: 10px; padding: var(--card-padding); background: var(--card-bg); border: 1px solid var(--card-border); border-radius: var(--card-radius); transition: all var(--transition-normal); animation: slideIn 0.3s ease; cursor: pointer; }
     .task-card.dragging { opacity: 0.4; cursor: grabbing; }
     .task-card.drag-above { border-top: 2.5px solid var(--accent4); }
     .task-card.drag-below { border-bottom: 2.5px solid var(--accent4); }
@@ -243,7 +243,7 @@
     @keyframes slideIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
     .task-card:hover { background: var(--card-hover-bg); border-color: var(--card-hover-border); box-shadow: var(--card-hover-shadow); }
     .task-card.done { opacity: 0.5; }
-    .task-card.done:hover { background: none; }
+    .task-card.done:hover { background: var(--card-hover-bg); }
     .check-btn { width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--check-border); background: none; color: transparent; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; flex-shrink: 0; }
     .check-btn:hover { border-color: var(--check-done); background: rgba(var(--accent3-rgb), 0.1); }
     .task-card.done .check-btn { border-color: var(--check-done); background: var(--check-done); color: #fff; animation: popIn 0.3s ease; }
@@ -465,8 +465,6 @@
     .expand-arrow:hover { color: var(--text); background: var(--surface2); }
     .expand-arrow.no-subtasks { visibility: hidden; }
     .subtask-count-badge { font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 6px; background: rgba(var(--accent4-rgb), 0.12); color: var(--accent4); margin-left: 4px; }
-    .task-detail-btn { background: none; border: none; cursor: pointer; padding: 4px 6px; border-radius: 6px; transition: all 0.15s; flex-shrink: 0; font-size: 15px; color: var(--check-border); }
-    .task-detail-btn:hover { color: var(--accent4); background: rgba(var(--accent4-rgb), 0.1); }
     .subtask-inline-list { padding: 0 0 0 40px; list-style: none; }
     .subtask-inline-row {
       display: flex; align-items: center; gap: 8px; padding: 6px 12px; margin-top: 2px;
@@ -1923,8 +1921,6 @@
           '<button class="check-btn" title="Toggle complete">'+(task.done?'\u2713':'')+'</button>' +
           '<div class="task-body"><div class="task-text">'+renderLinkedText(task.text)+'</div>'+bodyMeta+'</div>' +
           (task.done ? '' : '<button class="task-action-btn play-btn" title="Start Pomodoro">\u25B6</button>') +
-          '<button class="task-action-btn task-detail-btn" title="Details">\u{1F4DD}</button>' +
-          '<button class="task-action-btn edit-btn" title="Edit">\u270F\uFE0F</button>' +
           '<button class="task-action-btn del-btn" title="Delete">&times;</button>';
 
         // Expand arrow
@@ -1934,9 +1930,8 @@
         li.querySelector('.check-btn').addEventListener('click', function(e) { toggleTask(task.id, e); });
         var playB = li.querySelector('.play-btn');
         if (playB) playB.addEventListener('click', function(e) { e.stopPropagation(); openPomo(task.id); });
-        li.querySelector('.task-detail-btn').addEventListener('click', function(e) { e.stopPropagation(); openDetail(task.id); });
-        li.querySelector('.edit-btn').addEventListener('click', function(e) { e.stopPropagation(); openEditModal(task.id); });
         li.querySelector('.del-btn').addEventListener('click', function() { deleteTask(task.id); });
+        li.addEventListener('click', function(e) { if (e.target.closest('button, a, input, select')) return; openDetail(task.id); });
         li.addEventListener('dragstart', function(e) { onTaskDragStart(e, task.id); });
         li.addEventListener('dragend', onTaskDragEnd);
         li.addEventListener('dragover', function(e) {
