@@ -62,4 +62,5 @@ Layout: fixed `.sidebar` (left) + `.main` (center) + sliding `.pomo-panel` (righ
 - Drag-and-drop: tasks reorder in list, or drop onto folder nav items to move
 - Theme system: `setTheme(name, mode)` sets both `data-theme` and `data-mode` on `<html>`, saves to localStorage, and updates UI. `toggleMode()` flips dark/light within current theme.
 - All user-facing text uses `escapeHtml()`/`escapeAttr()` for XSS safety
+- Hyperlink support: `[text](url)` markdown in task/subtask text, rendered as clickable `<a class="task-link">` via `renderLinkedText()`. Cmd+K (or Ctrl+K) opens a link popup when text is selected in allowlisted inputs. Links restricted to `https?://` for security.
 - Sound via Web Audio API (`playSound()`) — no audio files

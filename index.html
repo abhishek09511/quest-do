@@ -251,6 +251,20 @@
     .task-body { flex: 1; min-width: 0; }
     .task-text { font-size: 15px; font-weight: 500; transition: all 0.2s; }
     .task-card.done .task-text { text-decoration: line-through; color: var(--text-muted); }
+    .task-link { color: var(--accent4); text-decoration: underline; text-decoration-color: rgba(var(--accent4-rgb), 0.4); text-underline-offset: 2px; transition: all 0.15s; cursor: pointer; }
+    .task-link:hover { text-decoration-color: var(--accent4); filter: brightness(1.15); }
+    .task-card.done .task-link { color: var(--text-muted); text-decoration-color: rgba(var(--text-muted), 0.3); }
+    .subtask-text-detail.done .task-link, .subtask-inline-text.done .task-link { color: var(--text-muted); text-decoration-color: rgba(var(--text-muted), 0.3); }
+    .link-popup { position: fixed; z-index: 200; background: var(--bg); border: 1px solid var(--border-strong); border-radius: 10px; box-shadow: 0 8px 32px rgba(0,0,0,0.25); padding: 10px; display: flex; gap: 6px; align-items: center; animation: modalIn 0.2s ease; }
+    .link-popup input { width: 220px; padding: 7px 10px; border-radius: 6px; border: 1px solid var(--border-strong); background: var(--surface2); color: var(--text); font-family: inherit; font-size: 13px; outline: none; }
+    .link-popup input:focus { border-color: var(--accent4); }
+    .link-popup button { padding: 7px 12px; border-radius: 6px; border: none; font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+    .link-ok { background: var(--accent4); color: #fff; }
+    .link-ok:hover { filter: brightness(1.1); }
+    .link-cancel { background: var(--surface2); color: var(--text-muted); }
+    .link-cancel:hover { color: var(--text); }
+    .link-remove { background: none; color: var(--accent); padding: 7px 8px; }
+    .link-remove:hover { background: rgba(var(--accent-rgb), 0.1); }
     .task-meta { display: flex; gap: 6px; margin-top: 3px; flex-wrap: wrap; align-items: center; }
     .task-deadline { font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: var(--radius-pill); }
     .task-deadline.overdue { color: #fff; background: var(--accent); }
@@ -293,6 +307,21 @@
     .modal-btn-save:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(var(--accent-rgb), 0.3), 0 0 25px rgba(var(--accent-rgb), 0.15); }
     .modal-btn-cancel { background: var(--surface2); color: var(--text-muted); }
     .modal-btn-cancel:hover { color: var(--text); }
+
+    /* ── Emoji Picker ── */
+    .emoji-picker { position: absolute; z-index: 200; width: 280px; max-height: 320px; background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--card-radius); box-shadow: 0 8px 32px rgba(0,0,0,0.25); display: flex; flex-direction: column; overflow: hidden; }
+    .emoji-picker-tabs { display: flex; gap: 2px; padding: 6px 6px 0; border-bottom: 1px solid var(--border); overflow-x: auto; flex-shrink: 0; }
+    .emoji-picker-tab { background: none; border: none; padding: 4px 8px; border-radius: 6px; cursor: pointer; font-size: 14px; color: var(--text-muted); transition: all 0.15s; white-space: nowrap; }
+    .emoji-picker-tab:hover { background: var(--surface2); }
+    .emoji-picker-tab.active { background: var(--accent4); color: #fff; }
+    .emoji-picker-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; padding: 8px; overflow-y: auto; flex: 1; }
+    .emoji-picker-grid button { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; font-size: 20px; background: none; border: none; border-radius: 6px; cursor: pointer; transition: background 0.12s; }
+    .emoji-picker-grid button:hover { background: var(--surface2); }
+    .folder-emoji { cursor: pointer; transition: transform 0.15s; display: inline-block; }
+    .folder-emoji:hover { transform: scale(1.2); }
+
+    /* ── Auto-delete badge ── */
+    .auto-delete-badge { font-size: 11px; color: var(--text-muted); opacity: 0.7; font-style: italic; }
 
     /* ── Pomodoro Panel ── */
     .pomo-panel {
@@ -675,14 +704,33 @@
 
     /* ── State ── */
     var FOLDER_EMOJIS = ['\u{1F4C2}','\u{1F4BC}','\u{1F3E0}','\u{1F4DA}','\u{1F3C6}','\u{1F680}','\u{1F3A8}','\u{1F4AA}','\u2764\uFE0F','\u{1F48E}'];
+    var DEFAULT_EMOJI = '\u{1F4C2}';
+    var EMOJI_CATEGORIES = {
+      'Smileys': ['😀','😎','🤩','😇','🥳','😤','🤔','💀','👻','🤖','👽','🎃','😺','🫠','💩'],
+      'People': ['👋','✌️','🤝','💪','🧠','👀','❤️','🔥','⭐','✨','💎','🏆','👑','🎯','🫡'],
+      'Animals': ['🐶','🐱','🐻','🦊','🐸','🐵','🦁','🐧','🦋','🐝','🐙','🦄','🐲','🐺','🦅'],
+      'Food': ['🍎','🍕','🍔','☕','🍺','🧁','🍩','🌮','🍜','🥗','🍰','🧀','🥑','🍓','🫖'],
+      'Travel': ['🏠','🏢','🌍','✈️','🚀','🏔️','🌊','🏖️','🌲','🗺️','🎪','🏰','⛺','🌌','🛸'],
+      'Objects': ['📂','💼','📚','🎨','🔧','💡','📌','🗂️','📝','💻','📱','🔬','🎵','📷','🧩']
+    };
+
+    function getFolderNames() { return state.folders.map(function(f) { return f.name; }); }
+    function getFolderObj(name) { return state.folders.find(function(f) { return f.name === name; }); }
+    function getFolderEmoji(name) { var f = getFolderObj(name); return f ? f.emoji : DEFAULT_EMOJI; }
 
     function getDefaultState() {
-      return { tasks: [], folders: ['Work', 'Personal'], xp: 0, totalDone: 0, streakDays: [],
+      return { tasks: [], folders: [{name:'Work', emoji:'💼'}, {name:'Personal', emoji:'🏠'}], xp: 0, totalDone: 0, streakDays: [],
         activeFolder: '__all', sortByDeadline: false, sortByXP: false, pomoToday: '', pomoDayCount: 0, hideDone: false };
     }
     function migrateState(s) {
       if (!s.tasks) s.tasks = [];
-      if (!s.folders) s.folders = ['Work', 'Personal'];
+      if (!s.folders) s.folders = [{name:'Work', emoji:'💼'}, {name:'Personal', emoji:'🏠'}];
+      // Migrate old string[] folders to {name, emoji}[]
+      if (s.folders.length > 0 && typeof s.folders[0] === 'string') {
+        s.folders = s.folders.map(function(name, i) {
+          return { name: name, emoji: FOLDER_EMOJIS[i % FOLDER_EMOJIS.length] };
+        });
+      }
       if (s.xp === undefined) s.xp = 0;
       if (s.totalDone === undefined) s.totalDone = 0;
       if (!s.streakDays) s.streakDays = [];
@@ -698,9 +746,17 @@
         if (t.comments === undefined) t.comments = '';
         if (t.expanded === undefined) t.expanded = false;
         if (t.baseXP === undefined) t.baseXP = 10;
+        if (t.completedAt === undefined) t.completedAt = null;
       });
       s.tasks.sort(function(a, b) { return (a.done ? 1 : 0) - (b.done ? 1 : 0); });
       return s;
+    }
+    function cleanupExpiredTasks(s) {
+      var THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
+      var now = Date.now();
+      s.tasks = s.tasks.filter(function(t) {
+        return !(t.done && t.completedAt && (now - t.completedAt > THIRTY_DAYS));
+      });
     }
 
     var state = JSON.parse(localStorage.getItem('questdo') || 'null') || getDefaultState();
@@ -710,6 +766,7 @@
       localStorage.removeItem('tasks');
     }
     migrateState(state);
+    cleanupExpiredTasks(state);
 
     var renamingFolder = null, draggedTaskId = null, detailTaskId = null, editingSubId = null, editingInlineSubId = null;
     function save() {
@@ -771,6 +828,7 @@
         if (doc.exists && doc.data().state) {
           state = doc.data().state;
           migrateState(state);
+          cleanupExpiredTasks(state);
           localStorage.setItem('questdo', JSON.stringify(state));
           renderAll();
           showSyncStatus();
@@ -1064,15 +1122,71 @@
       }
     }
 
+    /* ── Emoji Picker ── */
+    var emojiPickerEl = null;
+    function showEmojiPicker(anchorEl, callback) {
+      closeEmojiPicker();
+      var picker = document.createElement('div'); picker.className = 'emoji-picker';
+      var cats = Object.keys(EMOJI_CATEGORIES);
+      var tabsHtml = '<div class="emoji-picker-tabs">';
+      cats.forEach(function(cat, i) { tabsHtml += '<button class="emoji-picker-tab'+(i===0?' active':'')+'" data-cat="'+cat+'">'+cat+'</button>'; });
+      tabsHtml += '</div>';
+      picker.innerHTML = tabsHtml + '<div class="emoji-picker-grid"></div>';
+      document.body.appendChild(picker);
+      emojiPickerEl = picker;
+
+      function renderCategory(cat) {
+        var grid = picker.querySelector('.emoji-picker-grid'); grid.innerHTML = '';
+        EMOJI_CATEGORIES[cat].forEach(function(em) {
+          var btn = document.createElement('button'); btn.textContent = em;
+          btn.addEventListener('click', function() { callback(em); closeEmojiPicker(); });
+          grid.appendChild(btn);
+        });
+        picker.querySelectorAll('.emoji-picker-tab').forEach(function(t) { t.classList.toggle('active', t.getAttribute('data-cat') === cat); });
+      }
+      renderCategory(cats[0]);
+      picker.querySelectorAll('.emoji-picker-tab').forEach(function(tab) {
+        tab.addEventListener('click', function() { renderCategory(tab.getAttribute('data-cat')); });
+      });
+
+      // Position relative to anchor
+      var rect = anchorEl.getBoundingClientRect();
+      var top = rect.bottom + 4, left = rect.left;
+      if (top + 320 > window.innerHeight) top = rect.top - 324;
+      if (left + 280 > window.innerWidth) left = window.innerWidth - 284;
+      if (left < 4) left = 4;
+      picker.style.position = 'fixed'; picker.style.top = top + 'px'; picker.style.left = left + 'px';
+
+      // Close on outside click / Escape
+      setTimeout(function() {
+        document.addEventListener('click', emojiPickerOutsideClick);
+        document.addEventListener('keydown', emojiPickerEscape);
+      }, 0);
+    }
+    function closeEmojiPicker() {
+      if (emojiPickerEl) { emojiPickerEl.remove(); emojiPickerEl = null; }
+      document.removeEventListener('click', emojiPickerOutsideClick);
+      document.removeEventListener('keydown', emojiPickerEscape);
+    }
+    function emojiPickerOutsideClick(e) { if (emojiPickerEl && !emojiPickerEl.contains(e.target)) closeEmojiPicker(); }
+    function emojiPickerEscape(e) { if (e.key === 'Escape') closeEmojiPicker(); }
+
     /* ── Folders ── */
     function addFolder() {
       var inp = document.getElementById('newFolderInput'), name = inp.value.trim();
-      if (!name || state.folders.includes(name)) return;
-      state.folders.push(name); inp.value = ''; save(); renderAll();
+      if (!name || getFolderNames().includes(name)) return;
+      state.folders.push({name: name, emoji: DEFAULT_EMOJI}); inp.value = ''; save(); renderAll();
+      // Open emoji picker for the new folder
+      setTimeout(function() {
+        var emojiSpan = document.querySelector('.folder-emoji[data-folder="'+CSS.escape(name)+'"]');
+        if (emojiSpan) showEmojiPicker(emojiSpan, function(emoji) {
+          var folder = getFolderObj(name); if (folder) { folder.emoji = emoji; save(); renderAll(); }
+        });
+      }, 50);
     }
     document.getElementById('newFolderInput').addEventListener('keydown', function(e) { if (e.key === 'Enter') addFolder(); });
     function deleteFolder(name) {
-      state.folders = state.folders.filter(function(f) { return f !== name; });
+      state.folders = state.folders.filter(function(f) { return f.name !== name; });
       state.tasks.forEach(function(t) { if (t.folder === name) t.folder = ''; });
       if (state.activeFolder === name) state.activeFolder = '__all'; save(); renderAll();
     }
@@ -1084,15 +1198,124 @@
     function commitRenameFolder(oldName) {
       var inp = document.querySelector('.rename-input-' + CSS.escape(oldName));
       var newName = inp ? inp.value.trim() : '';
-      if (!newName || (newName !== oldName && state.folders.includes(newName))) { renamingFolder = null; renderFolderNav(); return; }
+      if (!newName || (newName !== oldName && getFolderNames().includes(newName))) { renamingFolder = null; renderFolderNav(); return; }
       if (newName !== oldName) {
-        var idx = state.folders.indexOf(oldName); if (idx >= 0) state.folders[idx] = newName;
+        var folder = getFolderObj(oldName); if (folder) folder.name = newName;
         state.tasks.forEach(function(t) { if (t.folder === oldName) t.folder = newName; });
         if (state.activeFolder === oldName) state.activeFolder = newName;
       }
       renamingFolder = null; save(); renderAll();
     }
     function cancelRenameFolder() { renamingFolder = null; renderFolderNav(); }
+
+    /* ── Cmd+K Link Popup ── */
+    var linkPopupState = null;
+
+    function showLinkPopup(inputEl) {
+      closeLinkPopup();
+      var start = inputEl.selectionStart, end = inputEl.selectionEnd;
+      if (start === end) return; // no selection
+      var val = inputEl.value;
+      var selectedText = val.substring(start, end);
+
+      // Check if selection overlaps an existing [text](url) link
+      var linkRe = /\[(.+?)\]\((https?:\/\/[^\s)]+)\)/g;
+      var existingUrl = '', existingMatch = null;
+      var m;
+      while ((m = linkRe.exec(val)) !== null) {
+        var mStart = m.index, mEnd = m.index + m[0].length;
+        if (start < mEnd && end > mStart) {
+          existingUrl = m[2];
+          existingMatch = { start: mStart, end: mEnd, text: m[1], full: m[0] };
+          start = mStart; end = mEnd;
+          selectedText = m[1];
+          inputEl.selectionStart = start; inputEl.selectionEnd = end;
+          break;
+        }
+      }
+
+      var rect = inputEl.getBoundingClientRect();
+      var popup = document.createElement('div');
+      popup.className = 'link-popup';
+      popup.innerHTML =
+        '<input type="text" class="link-url-input" placeholder="Paste URL..." value="' + escapeAttr(existingUrl) + '">' +
+        '<button class="link-ok">OK</button>' +
+        '<button class="link-cancel">Cancel</button>' +
+        (existingMatch ? '<button class="link-remove">Remove</button>' : '');
+
+      document.body.appendChild(popup);
+
+      // Position: below input, flip above if near bottom
+      var popupH = popup.offsetHeight;
+      var top = rect.bottom + 6;
+      if (top + popupH > window.innerHeight - 10) top = rect.top - popupH - 6;
+      var left = Math.min(rect.left, window.innerWidth - popup.offsetWidth - 10);
+      popup.style.top = top + 'px';
+      popup.style.left = Math.max(10, left) + 'px';
+
+      linkPopupState = { inputEl: inputEl, popup: popup, start: start, end: end, selectedText: selectedText, existingMatch: existingMatch };
+
+      var urlInput = popup.querySelector('.link-url-input');
+      urlInput.focus();
+      urlInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') { e.preventDefault(); applyLink(); }
+        if (e.key === 'Escape') { e.preventDefault(); closeLinkPopup(); inputEl.focus(); }
+      });
+      popup.querySelector('.link-ok').addEventListener('click', applyLink);
+      popup.querySelector('.link-cancel').addEventListener('click', function() { closeLinkPopup(); inputEl.focus(); });
+      var removeBtn = popup.querySelector('.link-remove');
+      if (removeBtn) removeBtn.addEventListener('click', removeLink);
+    }
+
+    function applyLink() {
+      if (!linkPopupState) return;
+      var s = linkPopupState;
+      var url = s.popup.querySelector('.link-url-input').value.trim();
+      if (!url) { closeLinkPopup(); s.inputEl.focus(); return; }
+      if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+      var val = s.inputEl.value;
+      var replacement = '[' + s.selectedText + '](' + url + ')';
+      s.inputEl.value = val.substring(0, s.start) + replacement + val.substring(s.end);
+      var cursorPos = s.start + replacement.length;
+      closeLinkPopup();
+      s.inputEl.focus();
+      s.inputEl.selectionStart = s.inputEl.selectionEnd = cursorPos;
+      s.inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+
+    function removeLink() {
+      if (!linkPopupState || !linkPopupState.existingMatch) return;
+      var s = linkPopupState;
+      var val = s.inputEl.value;
+      var em = s.existingMatch;
+      s.inputEl.value = val.substring(0, em.start) + em.text + val.substring(em.end);
+      var cursorPos = em.start + em.text.length;
+      closeLinkPopup();
+      s.inputEl.focus();
+      s.inputEl.selectionStart = s.inputEl.selectionEnd = cursorPos;
+      s.inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+
+    function closeLinkPopup() {
+      if (linkPopupState && linkPopupState.popup && linkPopupState.popup.parentNode) {
+        linkPopupState.popup.parentNode.removeChild(linkPopupState.popup);
+      }
+      linkPopupState = null;
+    }
+
+    document.addEventListener('keydown', function(e) {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        var el = document.activeElement;
+        if (el && el.tagName === 'INPUT' && el.type === 'text' &&
+            (el.id === 'taskInput' || el.id === 'editText' || el.id === 'detailName' ||
+             el.id === 'detailSubtaskInput' || el.classList.contains('subtask-edit-input') ||
+             el.classList.contains('subtask-inline-edit-input'))) {
+          e.preventDefault();
+          showLinkPopup(el);
+        }
+      }
+    });
+
     function switchFolder(f) {
       state.activeFolder = f; document.querySelector('.sidebar').classList.remove('open');
       save(); renderAll();
@@ -1130,7 +1353,7 @@
       var dateVal = document.getElementById('dateInput').value, timeVal = document.getElementById('timeInput').value;
       var deadline = dateVal ? dateVal + (timeVal ? 'T' + timeVal : 'T23:59') : null;
       var folder = document.getElementById('folderSelect').value;
-      state.tasks.push({ id: Date.now()+Math.random(), text: text, done: false, folder: folder, deadline: deadline, createdAt: Date.now(), pomoCount: 0, subtasks: [], description: '', comments: '', expanded: false, baseXP: 10 });
+      state.tasks.push({ id: Date.now()+Math.random(), text: text, done: false, folder: folder, deadline: deadline, createdAt: Date.now(), pomoCount: 0, subtasks: [], description: '', comments: '', expanded: false, baseXP: 10, completedAt: null });
       document.getElementById('taskInput').value = ''; clearDate(); closeDatePopover(); save(); renderAll();
     }
 
@@ -1139,6 +1362,7 @@
       var task = state.tasks.find(function(t) { return t.id === id; }); if (!task) return;
       var wasDone = task.done; task.done = !task.done;
       if (task.done && !wasDone) {
+        task.completedAt = Date.now();
         var xp = calcTaskXP(task); state.xp += xp; state.totalDone++; updateStreak();
         if (typeof confetti === 'function') confetti({ particleCount: 80, spread: 70, origin: { y: 0.65 }, colors: ['#ff6e6e','#ffc857','#17c3b2','#a66cff','#fff'] });
         if (event) { var rect = event.target.getBoundingClientRect(); showXpPopup(rect.left+20, rect.top-10, xp); }
@@ -1147,7 +1371,7 @@
           setTimeout(function() { showToast(newLevel.emoji + ' Level Up! You are now a <b>' + newLevel.name + '</b>!');
             if (typeof confetti === 'function') confetti({ particleCount: 200, spread: 100, origin: { y: 0.5 } }); }, 400);
         }
-      } else if (!task.done && wasDone) { state.xp = Math.max(0, state.xp - 10); state.totalDone = Math.max(0, state.totalDone - 1); }
+      } else if (!task.done && wasDone) { task.completedAt = null; state.xp = Math.max(0, state.xp - 10); state.totalDone = Math.max(0, state.totalDone - 1); }
       // Auto-reposition: done tasks sink to bottom, undone tasks float above done section
       var idx = state.tasks.indexOf(task);
       state.tasks.splice(idx, 1);
@@ -1170,7 +1394,7 @@
       var dateVal = '', timeVal = '';
       if (task.deadline) { var parts = task.deadline.split('T'); dateVal = parts[0]||''; timeVal = parts[1]||''; }
       var folderOpts = '<option value="">No folder</option>';
-      state.folders.forEach(function(f) { folderOpts += '<option value="'+escapeAttr(f)+'"'+(task.folder===f?' selected':'')+'>'+escapeHtml(f)+'</option>'; });
+      state.folders.forEach(function(f) { folderOpts += '<option value="'+escapeAttr(f.name)+'"'+(task.folder===f.name?' selected':'')+'>'+f.emoji+' '+escapeHtml(f.name)+'</option>'; });
       var container = document.getElementById('modalContainer');
       container.innerHTML = '<div class="modal-overlay" id="editOverlay"><div class="modal"><h2>\u270F\uFE0F Edit Quest</h2><div class="modal-field"><label>Task name</label><input type="text" id="editText" value="'+escapeAttr(task.text)+'"></div><div class="modal-field"><label>Due date &amp; time</label><div class="field-row"><input type="date" id="editDate" value="'+dateVal+'"><input type="time" id="editTime" value="'+timeVal+'"></div></div><div class="modal-field"><label>Folder</label><select id="editFolder">'+folderOpts+'</select></div><div class="modal-field"><label>Base XP</label><input type="number" id="editBaseXP" value="'+(task.baseXP||10)+'" min="1" max="100"></div><div class="modal-actions"><button class="modal-btn-cancel" onclick="closeEditModal()">Cancel</button><button class="modal-btn-save" id="editSaveBtn">Save</button></div></div></div>';
       document.getElementById('editSaveBtn').addEventListener('click', function() { saveEdit(id); });
@@ -1204,7 +1428,7 @@
       if (task.subtasks.length > 0) {
         var allDone = task.subtasks.every(function(s) { return s.done; });
         if (allDone && !task.done) {
-          task.done = true;
+          task.done = true; task.completedAt = Date.now();
           var xp = calcTaskXP(task); state.xp += xp; state.totalDone++; updateStreak();
           if (typeof confetti === 'function') confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 }, colors: ['#ff6e6e','#ffc857','#17c3b2','#a66cff','#fff'] });
           if (event) { var rect = event.target.getBoundingClientRect(); showXpPopup(rect.left+20, rect.top-10, xp); }
@@ -1216,7 +1440,7 @@
           showToast('\u2728 All subtasks done! Quest completed!');
         } else if (!allDone && task.done) {
           // Un-complete parent if a subtask is unchecked
-          task.done = false;
+          task.done = false; task.completedAt = null;
           state.xp = Math.max(0, state.xp - 10); state.totalDone = Math.max(0, state.totalDone - 1);
         }
       }
@@ -1287,7 +1511,7 @@
         } else {
           subtaskHtml += '<div class="subtask-row-detail">' +
             '<button class="subtask-check' + (sub.done ? ' checked' : '') + '" data-toggle-sub="' + sub.id + '">' + (sub.done ? '\u2713' : '') + '</button>' +
-            '<span class="subtask-text-detail' + (sub.done ? ' done' : '') + '">' + escapeHtml(sub.text) + '</span>' +
+            '<span class="subtask-text-detail' + (sub.done ? ' done' : '') + '">' + renderLinkedText(sub.text) + '</span>' +
             '<button class="subtask-action-btn edit-sub" title="Edit" data-edit-sub="' + sub.id + '">\u270F</button>' +
             '<button class="subtask-action-btn del-sub" title="Delete" data-del-sub="' + sub.id + '">&times;</button>' +
             '</div>';
@@ -1365,6 +1589,8 @@
           if (e.key === 'Escape') { editingSubId = null; renderDetail(); }
         }
       });
+      // Prevent task-link clicks from triggering subtask actions
+      subList.addEventListener('click', function(e) { if (e.target.classList.contains('task-link')) e.stopPropagation(); });
     }
 
     /* ── Sort ── */
@@ -1405,6 +1631,17 @@
     /* ── Render ── */
     function escapeHtml(str) { var div = document.createElement('div'); div.textContent = str; return div.innerHTML; }
     function escapeAttr(str) { return str.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+    function renderLinkedText(str) {
+      var re = /\[(.+?)\]\((https?:\/\/[^\s)]+)\)/g;
+      var parts = [], lastIndex = 0, match;
+      while ((match = re.exec(str)) !== null) {
+        if (match.index > lastIndex) parts.push(escapeHtml(str.substring(lastIndex, match.index)));
+        parts.push('<a href="' + escapeAttr(match[2]) + '" target="_blank" rel="noopener noreferrer" class="task-link">' + escapeHtml(match[1]) + '</a>');
+        lastIndex = re.lastIndex;
+      }
+      if (lastIndex < str.length) parts.push(escapeHtml(str.substring(lastIndex)));
+      return parts.join('');
+    }
     function formatDeadline(dl) {
       var d = new Date(dl), now = new Date();
       var hasTime = !dl.endsWith('T23:59');
@@ -1450,8 +1687,8 @@
 
     function renderFolderNav() {
       var nav = document.getElementById('folderNav'); nav.innerHTML = '';
-      state.folders.forEach(function(f, i) {
-        var emoji = FOLDER_EMOJIS[i % FOLDER_EMOJIS.length];
+      state.folders.forEach(function(folderObj) {
+        var f = folderObj.name, emoji = folderObj.emoji;
         var count = state.tasks.filter(function(t) { return t.folder === f && !t.done; }).length;
         var active = state.activeFolder === f ? ' active' : '';
         if (renamingFolder === f) {
@@ -1465,10 +1702,16 @@
           setTimeout(function() { rinp.focus(); rinp.select(); }, 0); return;
         }
         var btn = document.createElement('button'); btn.className = 'nav-item'+active; btn.setAttribute('data-folder', f);
-        btn.innerHTML = emoji+' <span class="folder-name">'+escapeHtml(f)+'</span><span class="folder-count">'+count+'</span><span class="folder-action-btn rename-btn" title="Rename">\u270F</span><span class="folder-action-btn delete-btn" title="Delete">&times;</span>';
+        btn.innerHTML = '<span class="folder-emoji" data-folder="'+escapeAttr(f)+'">'+emoji+'</span> <span class="folder-name">'+escapeHtml(f)+'</span><span class="folder-count">'+count+'</span><span class="folder-action-btn rename-btn" title="Rename">\u270F</span><span class="folder-action-btn delete-btn" title="Delete">&times;</span>';
         btn.addEventListener('click', function(e) {
           if (e.target.classList.contains('delete-btn')) deleteFolder(f);
           else if (e.target.classList.contains('rename-btn')) { e.stopPropagation(); startRenameFolder(f); }
+          else if (e.target.classList.contains('folder-emoji')) {
+            e.stopPropagation();
+            showEmojiPicker(e.target, function(newEmoji) {
+              var folder = getFolderObj(f); if (folder) { folder.emoji = newEmoji; save(); renderAll(); }
+            });
+          }
           else switchFolder(f);
         });
         nav.appendChild(btn);
@@ -1477,9 +1720,9 @@
     function renderFolderSelect() {
       var sel = document.getElementById('folderSelect'), current = sel.value;
       sel.innerHTML = '<option value="">No folder</option>';
-      state.folders.forEach(function(f) { var opt = document.createElement('option'); opt.value = f; opt.textContent = f; sel.appendChild(opt); });
-      if (state.activeFolder !== '__all' && state.folders.includes(state.activeFolder)) sel.value = state.activeFolder;
-      else if (state.folders.includes(current)) sel.value = current;
+      state.folders.forEach(function(f) { var opt = document.createElement('option'); opt.value = f.name; opt.textContent = f.emoji + ' ' + f.name; sel.appendChild(opt); });
+      if (state.activeFolder !== '__all' && getFolderNames().includes(state.activeFolder)) sel.value = state.activeFolder;
+      else if (getFolderNames().includes(current)) sel.value = current;
     }
     function renderStats() {
       document.getElementById('statXp').textContent = state.xp;
@@ -1494,7 +1737,7 @@
     function renderViewTitle() {
       var el = document.getElementById('viewTitle');
       if (state.activeFolder === '__all') el.innerHTML = 'All Tasks';
-      else { var idx = state.folders.indexOf(state.activeFolder); el.innerHTML = (idx>=0?FOLDER_EMOJIS[idx%FOLDER_EMOJIS.length]:'\u{1F4C2}')+' '+escapeHtml(state.activeFolder); }
+      else { el.innerHTML = getFolderEmoji(state.activeFolder)+' '+escapeHtml(state.activeFolder); }
     }
     function renderTasks() {
       var listEl = document.getElementById('taskList'), emptyEl = document.getElementById('emptyState');
@@ -1515,11 +1758,15 @@
 
         var metaHtml = '';
         if (task.deadline) { var cls = deadlineClass(task.deadline, task.done); metaHtml += '<span class="task-deadline '+cls+'">'+deadlineDot(task.deadline, task.done)+formatDeadline(task.deadline)+'</span>'; }
-        if (state.activeFolder === '__all' && task.folder) metaHtml += '<span class="task-folder-badge">'+escapeHtml(task.folder)+'</span>';
+        if (state.activeFolder === '__all' && task.folder) metaHtml += '<span class="task-folder-badge">'+getFolderEmoji(task.folder)+' '+escapeHtml(task.folder)+'</span>';
         if (task.pomoCount > 0) metaHtml += '<span class="task-pomo-count">'+task.pomoCount+' pomo</span>';
         if (task.subtasks && task.subtasks.length > 0) {
           var subDone = task.subtasks.filter(function(s){return s.done;}).length;
           metaHtml += '<span class="subtask-count-badge">\u2610 '+subDone+'/'+task.subtasks.length+'</span>';
+        }
+        if (task.done && task.completedAt) {
+          var daysLeft = Math.ceil((task.completedAt + 30*86400000 - Date.now()) / 86400000);
+          if (daysLeft > 0) metaHtml += '<span class="auto-delete-badge">\u{1F5D1} auto-deletes in ' + daysLeft + 'd</span>';
         }
         metaHtml += '<span class="task-points">' + (task.done ? '+' + calcTaskXP(task) + ' XP earned' : calcTaskXP(task) + ' XP') + '</span>';
 
@@ -1531,7 +1778,7 @@
         li.innerHTML =
           '<button class="'+arrowClass+'" title="'+(hasSubtasks ? 'Expand subtasks' : '')+'">'+arrowChar+'</button>' +
           '<button class="check-btn" title="Toggle complete">'+(task.done?'\u2713':'')+'</button>' +
-          '<div class="task-body"><div class="task-text">'+escapeHtml(task.text)+'</div>'+bodyMeta+'</div>' +
+          '<div class="task-body"><div class="task-text">'+renderLinkedText(task.text)+'</div>'+bodyMeta+'</div>' +
           (task.done ? '' : '<button class="task-action-btn play-btn" title="Start Pomodoro">\u25B6</button>') +
           '<button class="task-action-btn task-detail-btn" title="Details">\u{1F4DD}</button>' +
           '<button class="task-action-btn edit-btn" title="Edit">\u270F\uFE0F</button>' +
@@ -1594,7 +1841,7 @@
             } else {
               subLi.innerHTML =
                 '<button class="subtask-check'+(sub.done?' checked':'')+'">'+(sub.done?'\u2713':'')+'</button>' +
-                '<span class="subtask-inline-text'+(sub.done?' done':'')+'">'+escapeHtml(sub.text)+'</span>' +
+                '<span class="subtask-inline-text'+(sub.done?' done':'')+'">'+renderLinkedText(sub.text)+'</span>' +
                 '<button class="subtask-inline-action edit-sub" title="Edit">\u270F</button>' +
                 '<button class="subtask-inline-action del-sub" title="Delete">&times;</button>';
               subLi.querySelector('.subtask-check').addEventListener('click', function(e) { toggleSubtask(task.id, sub.id, e); });
@@ -1606,6 +1853,8 @@
           listEl.appendChild(subUl);
         }
       });
+      // Prevent task-link clicks from triggering card actions
+      listEl.addEventListener('click', function(e) { if (e.target.classList.contains('task-link')) e.stopPropagation(); });
     }
     function renderAll() {
       renderAuthBar(); renderFolderNav(); renderFolderSelect(); renderStats(); renderViewTitle(); renderTasks(); setupFolderDropTargets();
