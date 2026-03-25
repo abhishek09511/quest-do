@@ -415,6 +415,17 @@
     .detail-meta-row { display: flex; align-items: center; gap: 10px; font-size: 13px; }
     .detail-meta-row .meta-label { color: var(--text-muted); min-width: 60px; font-weight: 700; font-size: 11px; text-transform: uppercase; }
     .detail-meta-row .meta-value { color: var(--text); font-weight: 500; }
+    .meta-value-editable { cursor: pointer; padding: 2px 6px; border-radius: 5px; transition: background 0.15s, color 0.15s; border: 1px solid transparent; }
+    .meta-value-editable:hover { background: var(--bg); border-color: var(--border); }
+    .meta-inline-input, .meta-inline-select {
+      background: var(--bg); border: 1px solid var(--accent4); color: var(--text);
+      font-family: inherit; font-size: 13px; font-weight: 500; padding: 2px 6px;
+      border-radius: 5px; outline: none; width: auto; min-width: 60px;
+    }
+    .meta-inline-input:focus, .meta-inline-select:focus { border-color: var(--accent4); }
+    .meta-inline-select { -webkit-appearance: none; appearance: none; cursor: pointer; padding-right: 18px;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23888'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 5px center; }
 
     .subtask-add-row { display: flex; gap: 6px; }
     .subtask-add-input {
@@ -1481,10 +1492,8 @@
       if (!detailTaskId) return;
       var task = state.tasks.find(function(t) { return t.id === detailTaskId; }); if (!task) return;
       var nameEl = document.getElementById('detailName');
-      var descEl = document.getElementById('detailDesc');
       var commEl = document.getElementById('detailComments');
       if (nameEl && nameEl.value.trim()) task.text = nameEl.value.trim();
-      if (descEl) task.description = descEl.value;
       if (commEl) task.comments = commEl.value;
       save(); renderTasks(); renderStats();
     }
@@ -1493,10 +1502,27 @@
       if (!task) { closeDetail(); return; }
       var body = document.getElementById('detailBody');
 
-      // Metadata
-      var folderDisplay = task.folder ? escapeHtml(task.folder) : '<span style="color:var(--text-muted)">None</span>';
-      var deadlineDisplay = task.deadline ? formatDeadline(task.deadline) : '<span style="color:var(--text-muted)">No deadline</span>';
-      var statusDisplay = task.done ? '<span style="color:var(--accent3)">\u2713 Completed</span>' : '<span style="color:var(--accent2)">In Progress</span>';
+      // Metadata (inline-editable)
+      var folderDisplay = task.folder ? escapeHtml(task.folder) : 'None';
+      var statusDisplay = task.done ? '\u2713 Completed' : 'In Progress';
+      var statusColor = task.done ? 'var(--accent3)' : 'var(--accent2)';
+
+      // Parse deadline into date and time parts
+      var deadlineDateVal = '', deadlineTimeVal = '', deadlineDateDisplay = 'No date', deadlineTimeDisplay = 'No time';
+      if (task.deadline) {
+        var dlParts = task.deadline.split('T');
+        deadlineDateVal = dlParts[0] || '';
+        deadlineTimeVal = dlParts[1] || '';
+        var dlDate = new Date(task.deadline);
+        deadlineDateDisplay = dlDate.toLocaleDateString(undefined, {month:'short', day:'numeric', year:'numeric'});
+        var hasTime = !task.deadline.endsWith('T23:59');
+        if (hasTime && deadlineTimeVal) {
+          deadlineTimeDisplay = dlDate.toLocaleTimeString(undefined, {hour:'numeric', minute:'2-digit'});
+        } else {
+          deadlineTimeVal = '';
+          deadlineTimeDisplay = 'No time';
+        }
+      }
 
       // Subtask list
       var subtaskHtml = '';
@@ -1523,17 +1549,14 @@
       body.innerHTML =
         '<input type="text" class="detail-task-name" id="detailName" value="' + escapeAttr(task.text) + '">' +
 
-        '<div>' +
-          '<div class="detail-section-label">Description</div>' +
-          '<textarea class="detail-textarea" id="detailDesc" placeholder="Add a description...">' + escapeHtml(task.description) + '</textarea>' +
-        '</div>' +
-
-        '<div class="detail-meta">' +
-          '<div class="detail-meta-row"><span class="meta-label">Status</span><span class="meta-value">' + statusDisplay + '</span></div>' +
-          '<div class="detail-meta-row"><span class="meta-label">Folder</span><span class="meta-value">' + folderDisplay + '</span></div>' +
-          '<div class="detail-meta-row"><span class="meta-label">Deadline</span><span class="meta-value">' + deadlineDisplay + '</span></div>' +
-          '<div class="detail-meta-row"><span class="meta-label">XP</span><span class="meta-value">' + calcTaskXP(task) + ' XP (base: ' + (task.baseXP || 10) + ')</span></div>' +
-          (task.pomoCount > 0 ? '<div class="detail-meta-row"><span class="meta-label">Pomos</span><span class="meta-value">' + task.pomoCount + ' sessions</span></div>' : '') +
+        '<div class="detail-meta" id="detailMeta">' +
+          '<div class="detail-meta-row"><span class="meta-label">Status</span><span class="meta-value meta-value-editable" data-field="status" style="color:' + statusColor + '">' + statusDisplay + '</span></div>' +
+          '<div class="detail-meta-row"><span class="meta-label">Folder</span><span class="meta-value meta-value-editable" data-field="folder">' + folderDisplay + '</span></div>' +
+          '<div class="detail-meta-row"><span class="meta-label">Due date</span><span class="meta-value meta-value-editable" data-field="date"' + (deadlineDateVal ? '' : ' style="color:var(--text-muted)"') + '>' + deadlineDateDisplay + '</span></div>' +
+          '<div class="detail-meta-row"><span class="meta-label">Due time</span><span class="meta-value meta-value-editable" data-field="time"' + (deadlineTimeVal ? '' : ' style="color:var(--text-muted)"') + '>' + deadlineTimeDisplay + '</span></div>' +
+          '<div class="detail-meta-row"><span class="meta-label">Base XP</span><span class="meta-value meta-value-editable" data-field="xp">' + (task.baseXP || 10) + '</span></div>' +
+          '<div class="detail-meta-row"><span class="meta-label">Total XP</span><span class="meta-value">' + calcTaskXP(task) + ' XP</span></div>' +
+          '<div class="detail-meta-row"><span class="meta-label">Pomos</span><span class="meta-value meta-value-editable" data-field="pomos">' + (task.pomoCount || 0) + ' sessions</span></div>' +
         '</div>' +
 
         '<div>' +
@@ -1551,11 +1574,131 @@
         '</div>';
 
       // Wire up events
-      // Save name/desc/comments on blur
+      // Save name/comments on blur
       document.getElementById('detailName').addEventListener('blur', saveDetailFields);
-      document.getElementById('detailDesc').addEventListener('blur', saveDetailFields);
       document.getElementById('detailComments').addEventListener('blur', saveDetailFields);
       document.getElementById('detailName').addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); this.blur(); } });
+
+      // Inline-editable metadata delegation
+      document.getElementById('detailMeta').addEventListener('click', function(e) {
+        var target = e.target.closest('.meta-value-editable');
+        if (!target || target.querySelector('input, select')) return;
+        var field = target.getAttribute('data-field');
+        var task = state.tasks.find(function(t) { return t.id === detailTaskId; });
+        if (!task) return;
+
+        function commitAndRender() { save(); renderAll(); renderDetail(); }
+
+        if (field === 'status') {
+          task.done = !task.done;
+          commitAndRender();
+          return;
+        }
+
+        if (field === 'folder') {
+          var sel = document.createElement('select');
+          sel.className = 'meta-inline-select';
+          sel.innerHTML = '<option value=""' + (!task.folder ? ' selected' : '') + '>None</option>';
+          state.folders.forEach(function(f) {
+            sel.innerHTML += '<option value="' + escapeAttr(f) + '"' + (task.folder === f ? ' selected' : '') + '>' + escapeHtml(f) + '</option>';
+          });
+          target.textContent = '';
+          target.appendChild(sel);
+          sel.focus();
+          sel.addEventListener('change', function() { task.folder = sel.value || null; commitAndRender(); });
+          sel.addEventListener('blur', function() { renderDetail(); });
+          return;
+        }
+
+        if (field === 'date') {
+          var inp = document.createElement('input');
+          inp.type = 'date';
+          inp.className = 'meta-inline-input';
+          var curParts = task.deadline ? task.deadline.split('T') : ['', ''];
+          inp.value = curParts[0] || '';
+          target.textContent = '';
+          target.appendChild(inp);
+          inp.focus();
+          function saveDate() {
+            var dv = inp.value;
+            var curTimePart = task.deadline ? task.deadline.split('T')[1] || '23:59' : '23:59';
+            task.deadline = dv ? dv + 'T' + curTimePart : null;
+            commitAndRender();
+          }
+          inp.addEventListener('change', saveDate);
+          inp.addEventListener('blur', function() { renderDetail(); });
+          inp.addEventListener('keydown', function(e) { if (e.key === 'Enter') { saveDate(); } if (e.key === 'Escape') { renderDetail(); } });
+          return;
+        }
+
+        if (field === 'time') {
+          var inp = document.createElement('input');
+          inp.type = 'time';
+          inp.className = 'meta-inline-input';
+          if (task.deadline) {
+            var tp = task.deadline.split('T')[1] || '';
+            inp.value = (tp && tp !== '23:59') ? tp : '';
+          }
+          target.textContent = '';
+          target.appendChild(inp);
+          inp.focus();
+          function saveTime() {
+            var tv = inp.value;
+            var curDatePart = task.deadline ? task.deadline.split('T')[0] : '';
+            if (!curDatePart) {
+              // No date set yet — use today
+              var today = new Date();
+              curDatePart = today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0') + '-' + String(today.getDate()).padStart(2,'0');
+            }
+            task.deadline = curDatePart + 'T' + (tv || '23:59');
+            commitAndRender();
+          }
+          inp.addEventListener('change', saveTime);
+          inp.addEventListener('blur', function() { renderDetail(); });
+          inp.addEventListener('keydown', function(e) { if (e.key === 'Enter') { saveTime(); } if (e.key === 'Escape') { renderDetail(); } });
+          return;
+        }
+
+        if (field === 'xp') {
+          var inp = document.createElement('input');
+          inp.type = 'number';
+          inp.className = 'meta-inline-input';
+          inp.min = '1'; inp.max = '100';
+          inp.value = task.baseXP || 10;
+          inp.style.width = '60px';
+          target.textContent = '';
+          target.appendChild(inp);
+          inp.focus(); inp.select();
+          function saveXP() {
+            var v = parseInt(inp.value, 10);
+            if (v && v > 0) task.baseXP = v;
+            commitAndRender();
+          }
+          inp.addEventListener('blur', saveXP);
+          inp.addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); saveXP(); } if (e.key === 'Escape') { renderDetail(); } });
+          return;
+        }
+
+        if (field === 'pomos') {
+          var inp = document.createElement('input');
+          inp.type = 'number';
+          inp.className = 'meta-inline-input';
+          inp.min = '0';
+          inp.value = task.pomoCount || 0;
+          inp.style.width = '60px';
+          target.textContent = '';
+          target.appendChild(inp);
+          inp.focus(); inp.select();
+          function savePomos() {
+            var v = parseInt(inp.value, 10);
+            task.pomoCount = (v >= 0) ? v : 0;
+            commitAndRender();
+          }
+          inp.addEventListener('blur', savePomos);
+          inp.addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); savePomos(); } if (e.key === 'Escape') { renderDetail(); } });
+          return;
+        }
+      });
 
       // Add subtask
       var addBtn = document.getElementById('detailSubtaskAddBtn');
