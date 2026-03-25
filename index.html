@@ -282,6 +282,15 @@
     @media (hover: none) { .task-action-btn { opacity: 0.6; } }
     .play-btn:hover { color: var(--accent3); background: rgba(var(--accent3-rgb), 0.1); }
     .edit-btn:hover { color: var(--accent2); background: rgba(var(--accent2-rgb), 0.1); }
+    .task-quick-dates { display: flex; gap: 4px; opacity: 0; transition: opacity 0.15s; flex-shrink: 0; align-items: center; }
+    .task-card:hover .task-quick-dates { opacity: 1; }
+    @media (hover: none) { .task-quick-dates { opacity: 0.6; } }
+    .task-quick-date { padding: 2px 8px; border-radius: var(--radius-pill); border: 1px solid var(--border-strong); font-size: 10px; font-weight: 700; cursor: pointer; font-family: inherit; transition: all 0.15s; background: none; color: var(--text-muted); white-space: nowrap; }
+    .task-quick-date:hover { border-color: var(--accent4); color: var(--text); }
+    .task-quick-date.today-active { background: var(--accent2); color: var(--bg); border-color: var(--accent2); }
+    .task-quick-date.tomorrow-active { background: var(--accent3); color: var(--bg); border-color: var(--accent3); }
+    .detail-quick-dates { display: flex; gap: 6px; margin-top: 2px; margin-left: 70px; }
+    .form-quick-dates { display: flex; gap: 4px; align-items: center; }
     .del-btn { font-size: 18px; }
     .del-btn:hover { color: var(--accent); background: rgba(var(--accent-rgb), 0.1); }
     .empty-state { text-align: center; padding: 80px 20px; color: var(--text-muted); }
@@ -599,6 +608,10 @@
         <button class="calendar-toggle" id="calendarToggle" onclick="toggleDatePopover()" title="Set deadline">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
         </button>
+        <span class="form-quick-dates">
+          <button type="button" class="task-quick-date" id="formTodayBtn" onclick="toggleFormToday()" title="Due today">Today</button>
+          <button type="button" class="task-quick-date" id="formTomorrowBtn" onclick="toggleFormTomorrow()" title="Due tomorrow">Tmrw</button>
+        </span>
         <select class="folder-select" id="folderSelect" title="Assign folder"></select>
         <button class="add-btn" onclick="addTask()" title="Add quest">+</button>
       </div>
@@ -1341,9 +1354,27 @@
       var hasDate = document.getElementById('dateInput').value !== '';
       document.getElementById('calendarToggle').classList.toggle('has-date', hasDate);
     }
-    function setToday() { var d = new Date(); document.getElementById('dateInput').value = d.toISOString().slice(0,10); document.getElementById('timeInput').value = '21:00'; document.getElementById('todayTag').classList.add('active'); document.getElementById('tomorrowTag').classList.remove('active'); updateCalendarToggle(); }
-    function setTomorrow() { var d = new Date(); d.setDate(d.getDate()+1); document.getElementById('dateInput').value = d.toISOString().slice(0,10); document.getElementById('timeInput').value = '21:00'; document.getElementById('tomorrowTag').classList.add('active'); document.getElementById('todayTag').classList.remove('active'); updateCalendarToggle(); }
-    function clearDate() { document.getElementById('dateInput').value = ''; document.getElementById('timeInput').value = ''; document.getElementById('todayTag').classList.remove('active'); document.getElementById('tomorrowTag').classList.remove('active'); updateCalendarToggle(); }
+    function getTodayStr() { return new Date().toISOString().slice(0,10); }
+    function getTomorrowStr() { var d = new Date(); d.setDate(d.getDate()+1); return d.toISOString().slice(0,10); }
+    function isDeadlineToday(dl) { return dl && dl.startsWith(getTodayStr()); }
+    function isDeadlineTomorrow(dl) { return dl && dl.startsWith(getTomorrowStr()); }
+    function setToday() { var d = new Date(); document.getElementById('dateInput').value = d.toISOString().slice(0,10); document.getElementById('timeInput').value = '21:00'; document.getElementById('todayTag').classList.add('active'); document.getElementById('tomorrowTag').classList.remove('active'); updateFormQuickDates(); updateCalendarToggle(); }
+    function setTomorrow() { var d = new Date(); d.setDate(d.getDate()+1); document.getElementById('dateInput').value = d.toISOString().slice(0,10); document.getElementById('timeInput').value = '21:00'; document.getElementById('tomorrowTag').classList.add('active'); document.getElementById('todayTag').classList.remove('active'); updateFormQuickDates(); updateCalendarToggle(); }
+    function clearDate() { document.getElementById('dateInput').value = ''; document.getElementById('timeInput').value = ''; document.getElementById('todayTag').classList.remove('active'); document.getElementById('tomorrowTag').classList.remove('active'); updateFormQuickDates(); updateCalendarToggle(); }
+    function updateFormQuickDates() {
+      var dv = document.getElementById('dateInput').value;
+      var tb = document.getElementById('formTodayBtn'), tmb = document.getElementById('formTomorrowBtn');
+      if (tb) tb.classList.toggle('today-active', dv === getTodayStr());
+      if (tmb) tmb.classList.toggle('tomorrow-active', dv === getTomorrowStr());
+    }
+    function toggleFormToday() {
+      var di = document.getElementById('dateInput');
+      if (di.value === getTodayStr()) { clearDate(); } else { setToday(); }
+    }
+    function toggleFormTomorrow() {
+      var di = document.getElementById('dateInput');
+      if (di.value === getTomorrowStr()) { clearDate(); } else { setTomorrow(); }
+    }
     // Click outside closes popover
     document.addEventListener('click', function(e) {
       var popover = document.getElementById('datePopover');
@@ -1551,6 +1582,10 @@
           '<div class="detail-meta-row"><span class="meta-label">Status</span><span class="meta-value meta-value-editable" data-field="status" style="color:' + statusColor + '">' + statusDisplay + '</span></div>' +
           '<div class="detail-meta-row"><span class="meta-label">Folder</span><span class="meta-value meta-value-editable" data-field="folder">' + folderDisplay + '</span></div>' +
           '<div class="detail-meta-row"><span class="meta-label">Due date</span><span class="meta-value meta-value-editable" data-field="date"' + (deadlineDateVal ? '' : ' style="color:var(--text-muted)"') + '>' + deadlineDateDisplay + '</span></div>' +
+          '<div class="detail-quick-dates">' +
+            '<button class="task-quick-date' + (isDeadlineToday(task.deadline) ? ' today-active' : '') + '" data-quick-date="today">Today</button>' +
+            '<button class="task-quick-date' + (isDeadlineTomorrow(task.deadline) ? ' tomorrow-active' : '') + '" data-quick-date="tomorrow">Tmrw</button>' +
+          '</div>' +
           '<div class="detail-meta-row"><span class="meta-label">Due time</span><span class="meta-value meta-value-editable" data-field="time"' + (deadlineTimeVal ? '' : ' style="color:var(--text-muted)"') + '>' + deadlineTimeDisplay + '</span></div>' +
           '<div class="detail-meta-row"><span class="meta-label">Base XP</span><span class="meta-value meta-value-editable" data-field="xp">' + (task.baseXP || 10) + '</span></div>' +
           '<div class="detail-meta-row"><span class="meta-label">Total XP</span><span class="meta-value">' + calcTaskXP(task) + ' XP</span></div>' +
@@ -1579,6 +1614,19 @@
 
       // Inline-editable metadata delegation
       document.getElementById('detailMeta').addEventListener('click', function(e) {
+        // Handle quick-date buttons
+        var qd = e.target.closest('.task-quick-date');
+        if (qd) {
+          var task = state.tasks.find(function(t) { return t.id === detailTaskId; });
+          if (!task) return;
+          var type = qd.getAttribute('data-quick-date');
+          var dateStr = type === 'today' ? getTodayStr() : getTomorrowStr();
+          if (task.deadline && task.deadline.startsWith(dateStr)) { task.deadline = null; }
+          else { task.deadline = dateStr + 'T23:59'; }
+          save(); renderAll(); renderDetail();
+          return;
+        }
+
         var target = e.target.closest('.meta-value-editable');
         if (!target || target.querySelector('input, select')) return;
         var field = target.getAttribute('data-field');
@@ -1598,7 +1646,7 @@
           sel.className = 'meta-inline-select';
           sel.innerHTML = '<option value=""' + (!task.folder ? ' selected' : '') + '>None</option>';
           state.folders.forEach(function(f) {
-            sel.innerHTML += '<option value="' + escapeAttr(f) + '"' + (task.folder === f ? ' selected' : '') + '>' + escapeHtml(f) + '</option>';
+            sel.innerHTML += '<option value="' + escapeAttr(f.name) + '"' + (task.folder === f.name ? ' selected' : '') + '>' + f.emoji + ' ' + escapeHtml(f.name) + '</option>';
           });
           target.textContent = '';
           target.appendChild(sel);
@@ -1916,11 +1964,20 @@
         var arrowChar = task.expanded ? '\u25BC' : '\u25B6';
         var arrowClass = hasSubtasks ? 'expand-arrow' : 'expand-arrow no-subtasks';
 
+        var todayActive = isDeadlineToday(task.deadline) ? ' today-active' : '';
+        var tomorrowActive = isDeadlineTomorrow(task.deadline) ? ' tomorrow-active' : '';
+        var quickDatesHtml = task.done ? '' :
+          '<span class="task-quick-dates">' +
+            '<button class="task-quick-date' + todayActive + '" data-quick-date="today" title="Today">Today</button>' +
+            '<button class="task-quick-date' + tomorrowActive + '" data-quick-date="tomorrow" title="Tmrw">Tmrw</button>' +
+          '</span>';
+
         li.innerHTML =
           '<button class="'+arrowClass+'" title="'+(hasSubtasks ? 'Expand subtasks' : '')+'">'+arrowChar+'</button>' +
           '<button class="check-btn" title="Toggle complete">'+(task.done?'\u2713':'')+'</button>' +
           '<div class="task-body"><div class="task-text">'+renderLinkedText(task.text)+'</div>'+bodyMeta+'</div>' +
           (task.done ? '' : '<button class="task-action-btn play-btn" title="Start Pomodoro">\u25B6</button>') +
+          quickDatesHtml +
           '<button class="task-action-btn del-btn" title="Delete">&times;</button>';
 
         // Expand arrow
@@ -1931,7 +1988,21 @@
         var playB = li.querySelector('.play-btn');
         if (playB) playB.addEventListener('click', function(e) { e.stopPropagation(); openPomo(task.id); });
         li.querySelector('.del-btn').addEventListener('click', function() { deleteTask(task.id); });
-        li.addEventListener('click', function(e) { if (e.target.closest('button, a, input, select')) return; openDetail(task.id); });
+        li.addEventListener('click', function(e) {
+          var qd = e.target.closest('.task-quick-date');
+          if (qd) {
+            e.stopPropagation();
+            var type = qd.getAttribute('data-quick-date');
+            var dateStr = type === 'today' ? getTodayStr() : getTomorrowStr();
+            if (task.deadline && task.deadline.startsWith(dateStr)) { task.deadline = null; }
+            else { task.deadline = dateStr + 'T23:59'; }
+            save(); renderAll();
+            if (detailTaskId === task.id) renderDetail();
+            return;
+          }
+          if (e.target.closest('button, a, input, select')) return;
+          openDetail(task.id);
+        });
         li.addEventListener('dragstart', function(e) { onTaskDragStart(e, task.id); });
         li.addEventListener('dragend', onTaskDragEnd);
         li.addEventListener('dragover', function(e) {
