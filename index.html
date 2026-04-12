@@ -528,6 +528,8 @@
 
     /* ── Mobile ── */
     .sidebar-toggle { display: none; position: fixed; top: 12px; left: 12px; z-index: 20; background: var(--surface); border: 1px solid var(--border); color: var(--text); font-size: 20px; padding: 8px 12px; border-radius: 10px; cursor: pointer; }
+    .sidebar-close { display: none; }
+    .sidebar-backdrop { display: none; }
     @media (max-width: 700px) {
       .sidebar-toggle { display: block; }
       .sidebar { transform: translateX(-100%); transition: transform 0.25s ease; }
@@ -562,13 +564,328 @@
     .theme-seg-btn:hover:not(.active) { color: var(--text-secondary); }
     .mode-toggle-btn { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--border); background: var(--surface2); color: var(--text-secondary); font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all var(--transition-fast); flex-shrink: 0; }
     .mode-toggle-btn:hover { border-color: var(--accent4); color: var(--text); }
+
+    /* ══════════════════════════════════════════════════════
+       MOBILE-ONLY STYLES — max-width: 768px
+       Nothing below affects screens wider than 768px.
+       ══════════════════════════════════════════════════════ */
+    @media (max-width: 768px) {
+
+      /* ── ISSUE 1: Sticky add-task form above keyboard ── */
+      .add-form {
+        position: sticky;
+        top: 0;
+        z-index: 12;
+        background: var(--bg);
+        padding: 8px 0 12px 0;
+        margin-bottom: 12px;
+        border-bottom: 1px solid var(--border);
+      }
+      .form-row {
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .task-input {
+        flex: 1 1 100%;
+        min-height: 44px;
+        font-size: 16px; /* prevents iOS zoom on focus */
+      }
+      .form-quick-dates,
+      .calendar-toggle,
+      .folder-select,
+      .add-btn {
+        flex-shrink: 0;
+      }
+      .add-btn {
+        width: 44px;
+        height: 44px;
+        font-size: 22px;
+      }
+      .date-popover {
+        left: 0;
+        right: 0;
+        min-width: unset;
+      }
+
+      /* ── ISSUE 2: Two-row task card layout ── */
+      /*
+       * Same HTML as desktop (flat flex children). On mobile we use
+       * flex-wrap + order to create two visual rows:
+       *   Row 1: expand-arrow | checkbox | title(+meta inside) | play
+       *   Row 2: quick-dates (folder, Today, Tmrw) | del-btn
+       */
+      .task-card {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
+        padding: 10px;
+        gap: 4px 8px;
+      }
+
+      /* Row 1 items — stay on first line */
+      .task-card > .expand-arrow { order: 1; flex-shrink: 0; }
+      .task-card > .check-btn    { order: 2; flex-shrink: 0; }
+      .task-card > .task-body    { order: 3; flex: 1 1 0%; min-width: 0; }
+      .task-card > .play-btn     { order: 4; flex-shrink: 0; }
+
+      /* Line break between Row 1 and Row 2 */
+      .task-card::before {
+        content: '';
+        order: 5;
+        flex-basis: 100%;
+        height: 0;
+      }
+
+      /* Row 2 items — on second line */
+      .task-card > .task-quick-dates {
+        order: 6;
+        flex-basis: auto;
+        flex-shrink: 0;
+        opacity: 0.7;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .task-card > .del-btn {
+        order: 7;
+        flex-shrink: 0;
+        opacity: 0.6;
+        margin-left: auto;
+      }
+
+      .task-text {
+        font-size: 14px;
+        line-height: 1.35;
+      }
+      .task-meta {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        gap: 5px;
+        margin-top: 3px;
+        align-items: center;
+      }
+
+      /* ── ISSUE 3: Filter bar / toolbar scrollable ── */
+      .toolbar {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        flex-wrap: nowrap;
+        gap: 6px;
+        padding-bottom: 4px;
+        margin-bottom: 10px;
+      }
+      .toolbar::-webkit-scrollbar { display: none; }
+      .toolbar-btn {
+        flex-shrink: 0;
+        min-height: 44px;
+        min-width: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      /* ── ISSUE 4: Dark mode toggle — hide text label on mobile ── */
+      .theme-toggle-label {
+        display: none;
+      }
+      .theme-toggle {
+        padding: 8px 10px;
+        min-width: 44px;
+        min-height: 44px;
+        justify-content: center;
+        gap: 0;
+      }
+
+      /* ── ISSUE 5: Touch targets — minimum 44x44 ── */
+      .check-btn {
+        width: 26px;
+        height: 26px;
+        position: relative;
+      }
+      /* Invisible expanded touch target */
+      .check-btn::after {
+        content: '';
+        position: absolute;
+        top: -9px;
+        left: -9px;
+        right: -9px;
+        bottom: -9px;
+      }
+      .expand-arrow {
+        position: relative;
+        min-width: 24px;
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .expand-arrow::after {
+        content: '';
+        position: absolute;
+        top: -4px;
+        left: -10px;
+        right: -10px;
+        bottom: -4px;
+      }
+      /* Hide the no-subtasks arrow completely to save space */
+      .expand-arrow.no-subtasks {
+        width: 0;
+        min-width: 0;
+        padding: 0;
+        overflow: hidden;
+        visibility: hidden;
+      }
+      .task-action-btn {
+        position: relative;
+        min-width: 28px;
+        min-height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0.6;
+      }
+      .task-action-btn::after {
+        content: '';
+        position: absolute;
+        top: -8px;
+        left: -8px;
+        right: -8px;
+        bottom: -8px;
+      }
+      .calendar-toggle {
+        min-width: 44px;
+        min-height: 44px;
+      }
+      .task-quick-date {
+        min-height: 32px;
+        padding: 4px 10px;
+        display: inline-flex;
+        align-items: center;
+      }
+      .quick-chip {
+        min-height: 36px;
+        padding: 6px 14px;
+        display: inline-flex;
+        align-items: center;
+      }
+
+      /* ── ISSUE 6: Reduce vertical density ── */
+      .task-list {
+        gap: 4px;
+      }
+      .main {
+        padding: 56px 12px 24px;
+      }
+      .theme-row {
+        margin-bottom: 12px;
+      }
+      .view-title {
+        font-size: 22px;
+      }
+
+      /* ── ISSUE 7: Compact badges ── */
+      .task-points {
+        font-size: 10px;
+        padding: 1px 4px;
+      }
+      .subtask-count-badge {
+        font-size: 9px;
+        padding: 1px 5px;
+      }
+      .task-folder-badge {
+        font-size: 9px;
+      }
+      .task-deadline {
+        font-size: 10px;
+        padding: 1px 6px;
+      }
+      .task-pomo-count {
+        font-size: 9px;
+      }
+      .auto-delete-badge {
+        font-size: 9px;
+      }
+
+      /* ── General mobile polish ── */
+      .sidebar-toggle {
+        display: block;
+        min-width: 44px;
+        min-height: 44px;
+      }
+      .sidebar {
+        transform: translateX(-100%);
+        transition: transform 0.25s ease;
+        z-index: 50;
+      }
+      .sidebar.open {
+        transform: translateX(0);
+      }
+      .sidebar-close {
+        display: block;
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        background: none;
+        border: none;
+        color: var(--text-muted);
+        font-size: 24px;
+        cursor: pointer;
+        padding: 4px 8px;
+        border-radius: 6px;
+        z-index: 51;
+        min-width: 44px;
+        min-height: 44px;
+        line-height: 1;
+      }
+      .sidebar-close:hover {
+        color: var(--text);
+        background: var(--surface2);
+      }
+      .sidebar-backdrop {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.4);
+        z-index: 40;
+      }
+      .sidebar-backdrop.visible {
+        display: block;
+      }
+      .main {
+        margin-left: 0;
+      }
+      .pomo-panel {
+        width: 100%;
+      }
+      .detail-panel {
+        width: 100%;
+      }
+      body.detail-open .main {
+        margin-right: 0;
+      }
+      body.pomo-open.detail-open .main {
+        margin-right: 0;
+      }
+      body.detail-open .pomo-panel {
+        right: 0;
+      }
+
+      /* Prevent page-level horizontal scroll */
+      body {
+        overflow-x: hidden;
+      }
+    }
   </style>
   <script>(function(){if(!localStorage.getItem('questdo-theme-name')&&localStorage.getItem('questdo-theme')){localStorage.setItem('questdo-theme-name','glow');localStorage.setItem('questdo-theme-mode',localStorage.getItem('questdo-theme'));localStorage.removeItem('questdo-theme');}var t=localStorage.getItem('questdo-theme-name')||'glow';var m=localStorage.getItem('questdo-theme-mode')||'dark';document.documentElement.dataset.theme=t;document.documentElement.dataset.mode=m;})();</script>
 </head>
 <body>
-  <button class="sidebar-toggle" onclick="document.querySelector('.sidebar').classList.toggle('open')">&#9776;</button>
+  <button class="sidebar-toggle" onclick="document.querySelector('.sidebar').classList.toggle('open');document.querySelector('.sidebar-backdrop').classList.toggle('visible')">&#9776;</button>
+  <div class="sidebar-backdrop" onclick="document.querySelector('.sidebar').classList.remove('open');this.classList.remove('visible')"></div>
 
   <aside class="sidebar" id="sidebar">
+    <button class="sidebar-close" onclick="document.querySelector('.sidebar').classList.remove('open');document.querySelector('.sidebar-backdrop').classList.remove('visible')">&times;</button>
     <div class="sidebar-brand">&#9889; Quest Do</div>
     <div class="auth-bar" id="authBar"></div>
     <div class="stats-bar">
@@ -600,7 +917,7 @@
   <main class="main">
     <div class="theme-row">
       <div class="view-title" id="viewTitle">All Tasks</div>
-      <button class="theme-toggle" id="themeToggle" onclick="toggleMode()">&#9728;&#65039; Light</button>
+      <button class="theme-toggle" id="themeToggle" onclick="toggleMode()">&#9728;&#65039; <span class="theme-toggle-label">Light</span></button>
     </div>
     <div class="add-form" id="addForm">
       <div class="form-row">
@@ -711,7 +1028,7 @@
     function updateThemeUI() {
       var mode = getThemeMode(), name = getThemeName();
       var btn = document.getElementById('themeToggle');
-      if (btn) btn.innerHTML = mode === 'light' ? '&#127769; Dark' : '&#9728;&#65039; Light';
+      if (btn) btn.innerHTML = mode === 'light' ? '&#127769; <span class="theme-toggle-label">Dark</span>' : '&#9728;&#65039; <span class="theme-toggle-label">Light</span>';
       var modeBtn = document.getElementById('modeToggleBtn');
       if (modeBtn) modeBtn.innerHTML = mode === 'light' ? '&#127769;' : '&#9728;&#65039;';
       document.querySelectorAll('.theme-seg-btn').forEach(function(b) {
@@ -1339,7 +1656,7 @@
     });
 
     function switchFolder(f) {
-      state.activeFolder = f; document.querySelector('.sidebar').classList.remove('open');
+      state.activeFolder = f; document.querySelector('.sidebar').classList.remove('open'); var bd = document.querySelector('.sidebar-backdrop'); if (bd) bd.classList.remove('visible');
       save(); renderAll();
     }
     document.getElementById('navAll').addEventListener('click', function() { switchFolder('__all'); });
