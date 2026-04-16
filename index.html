@@ -316,6 +316,13 @@
     .modal-btn-save:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(var(--accent-rgb), 0.3), 0 0 25px rgba(var(--accent-rgb), 0.15); }
     .modal-btn-cancel { background: var(--surface2); color: var(--text-muted); }
     .modal-btn-cancel:hover { color: var(--text); }
+    .settings-radio-group { display: flex; flex-direction: column; gap: 4px; }
+    .settings-radio { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); cursor: pointer; font-size: 14px; color: var(--text); transition: all var(--transition-fast); text-transform: none; letter-spacing: 0; font-weight: 400; margin-bottom: 0; }
+    .settings-radio:hover { border-color: var(--accent4); }
+    .settings-radio input { accent-color: var(--accent); margin: 0; cursor: pointer; }
+    .settings-radio input:checked ~ span { font-weight: 700; }
+    .confirm-message { font-size: 13px; color: var(--text-secondary); line-height: 1.55; margin: 0; text-transform: none; letter-spacing: 0; font-weight: 400; }
+    .confirm-message strong { color: var(--text); font-weight: 700; }
 
     /* ── Emoji Picker ── */
     .emoji-picker { position: absolute; z-index: 200; width: 280px; max-height: 320px; background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--card-radius); box-shadow: 0 8px 32px rgba(0,0,0,0.25); display: flex; flex-direction: column; overflow: hidden; }
@@ -512,6 +519,8 @@
     .auth-bar .auth-name { flex: 1; font-size: 12px; font-weight: 600; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .auth-bar .auth-signout { background: none; border: none; color: var(--text-muted); font-size: 11px; cursor: pointer; padding: 4px 8px; border-radius: var(--radius-sm); transition: all var(--transition-fast); font-family: inherit; font-weight: 600; }
     .auth-bar .auth-signout:hover { color: var(--accent); background: rgba(var(--accent-rgb), 0.1); }
+    .auth-bar .auth-settings { background: none; border: none; color: var(--text-muted); font-size: 14px; cursor: pointer; padding: 4px 6px; border-radius: var(--radius-sm); transition: all var(--transition-fast); line-height: 1; flex-shrink: 0; }
+    .auth-bar .auth-settings:hover { color: var(--accent); background: rgba(var(--accent-rgb), 0.1); }
     .auth-bar .auth-signin-btn { flex: 1; padding: 8px 12px; border-radius: var(--radius-md); border: 1px solid var(--border-strong); background: var(--bg); color: var(--text); font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all var(--transition-fast); }
     .auth-bar .auth-signin-btn:hover { border-color: var(--accent4); box-shadow: var(--input-focus-shadow); }
     .auth-bar .auth-signin-btn svg { flex-shrink: 0; }
@@ -1057,9 +1066,10 @@
     function getFolderObj(name) { return state.folders.find(function(f) { return f.name === name; }); }
     function getFolderEmoji(name) { var f = getFolderObj(name); return f ? f.emoji : DEFAULT_EMOJI; }
 
+    var VALID_AUTO_DELETE = [1, 2, 3, 7, 30];
     function getDefaultState() {
       return { tasks: [], folders: [{name:'Work', emoji:'💼'}, {name:'Personal', emoji:'🏠'}], xp: 0, totalDone: 0, streakDays: [],
-        activeFolder: '__all', sortByDeadline: false, sortByXP: false, pomoToday: '', pomoDayCount: 0, hideDone: false };
+        activeFolder: '__all', sortByDeadline: false, sortByXP: false, pomoToday: '', pomoDayCount: 0, hideDone: false, autoDeleteDays: 3 };
     }
     function migrateState(s) {
       if (!s.tasks) s.tasks = [];
@@ -1078,6 +1088,7 @@
       if (!s.pomoToday) { s.pomoToday = ''; s.pomoDayCount = 0; }
       if (s.hideDone === undefined) s.hideDone = false;
       if (s.sortByXP === undefined) s.sortByXP = false;
+      if (s.autoDeleteDays === undefined) s.autoDeleteDays = 30;
       s.tasks.forEach(function(t) {
         if (t.pomoCount === undefined) t.pomoCount = 0;
         if (!t.subtasks) t.subtasks = [];
@@ -1090,12 +1101,19 @@
       s.tasks.sort(function(a, b) { return (a.done ? 1 : 0) - (b.done ? 1 : 0); });
       return s;
     }
+    function getAutoDeleteDays(s) {
+      if (typeof currentUser === 'undefined' || !currentUser) return 30;
+      var d = s && s.autoDeleteDays;
+      return VALID_AUTO_DELETE.indexOf(d) >= 0 ? d : 30;
+    }
     function cleanupExpiredTasks(s) {
-      var THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
+      var ms = getAutoDeleteDays(s) * 86400000;
       var now = Date.now();
+      var before = s.tasks.length;
       s.tasks = s.tasks.filter(function(t) {
-        return !(t.done && t.completedAt && (now - t.completedAt > THIRTY_DAYS));
+        return !(t.done && t.completedAt && (now - t.completedAt > ms));
       });
+      return before - s.tasks.length;
     }
 
     var state = JSON.parse(localStorage.getItem('questdo') || 'null') || getDefaultState();
@@ -1153,6 +1171,7 @@
         var name = escapeHtml(currentUser.displayName || currentUser.email || 'User');
         bar.innerHTML = photo +
           '<span class="auth-name">' + name + '</span>' +
+          '<button class="auth-settings" onclick="openSettingsModal()" title="Settings" aria-label="Settings">\u2699\uFE0F</button>' +
           '<button class="auth-signout" onclick="signOutUser()">Sign out</button>';
       } else {
         bar.innerHTML = '<button class="auth-signin-btn" onclick="signInWithGoogle()">' +
@@ -1771,6 +1790,72 @@
     }
     function closeEditModal() { document.getElementById('modalContainer').innerHTML = ''; }
 
+    /* ── Settings Modal ── */
+    var AUTO_DELETE_LABELS = { 1: '24 hours', 2: '2 days', 3: '3 days', 7: '1 week', 30: '1 month' };
+    function openSettingsModal(preselect) {
+      if (!currentUser) return;
+      var current = VALID_AUTO_DELETE.indexOf(state.autoDeleteDays) >= 0 ? state.autoDeleteDays : 30;
+      var selected = (preselect !== undefined && VALID_AUTO_DELETE.indexOf(preselect) >= 0) ? preselect : current;
+      var radios = VALID_AUTO_DELETE.map(function(d) {
+        var checked = d === selected ? ' checked' : '';
+        return '<label class="settings-radio"><input type="radio" name="autoDelete" value="'+d+'"'+checked+'><span>'+AUTO_DELETE_LABELS[d]+'</span></label>';
+      }).join('');
+      var container = document.getElementById('modalContainer');
+      container.innerHTML = '<div class="modal-overlay" id="settingsOverlay"><div class="modal"><h2>\u2699\uFE0F Settings</h2>'
+        + '<div class="modal-field"><label>Auto-delete completed tasks</label><div class="settings-radio-group">'+radios+'</div></div>'
+        + '<div class="modal-actions"><button class="modal-btn-cancel" onclick="closeSettingsModal()">Cancel</button><button class="modal-btn-save" id="settingsSaveBtn">Save</button></div></div></div>';
+      document.getElementById('settingsSaveBtn').addEventListener('click', saveSettings);
+      document.getElementById('settingsOverlay').addEventListener('click', function(e) { if (e.target === this) closeSettingsModal(); });
+    }
+    function closeSettingsModal() { document.getElementById('modalContainer').innerHTML = ''; }
+    function saveSettings() {
+      var picked = document.querySelector('input[name="autoDelete"]:checked');
+      if (!picked) return;
+      var newDays = parseInt(picked.value, 10);
+      var current = VALID_AUTO_DELETE.indexOf(state.autoDeleteDays) >= 0 ? state.autoDeleteDays : 30;
+      if (newDays === current) { closeSettingsModal(); return; }
+      if (newDays < current) {
+        openConfirmModal({
+          title: '\u26A0\uFE0F Confirm shorter retention',
+          message: 'You\u2019re changing auto-delete to <strong>' + AUTO_DELETE_LABELS[newDays] + '</strong>. Completed tasks older than ' + AUTO_DELETE_LABELS[newDays] + ' will be permanently deleted, and cannot be recovered.',
+          confirmLabel: 'Confirm',
+          onConfirm: function() { applyAutoDeleteChange(newDays); },
+          onCancel: function() { openSettingsModal(newDays); }
+        });
+      } else {
+        applyAutoDeleteChange(newDays);
+      }
+    }
+    function applyAutoDeleteChange(newDays) {
+      state.autoDeleteDays = newDays;
+      var removed = cleanupExpiredTasks(state);
+      closeSettingsModal();
+      save();
+      renderAll();
+      if (removed > 0) showToast('Auto-delete updated \u2014 ' + removed + ' task' + (removed === 1 ? '' : 's') + ' removed');
+      else showToast('Auto-delete set to ' + AUTO_DELETE_LABELS[newDays]);
+    }
+    function openConfirmModal(opts) {
+      var container = document.getElementById('modalContainer');
+      container.innerHTML = '<div class="modal-overlay" id="confirmOverlay"><div class="modal"><h2>'+opts.title+'</h2>'
+        + '<div class="modal-field"><p class="confirm-message">'+opts.message+'</p></div>'
+        + '<div class="modal-actions"><button class="modal-btn-cancel" id="confirmCancelBtn">Cancel</button><button class="modal-btn-save" id="confirmOkBtn">'+(opts.confirmLabel || 'Confirm')+'</button></div></div></div>';
+      document.getElementById('confirmOkBtn').addEventListener('click', function() {
+        closeSettingsModal();
+        if (typeof opts.onConfirm === 'function') opts.onConfirm();
+      });
+      document.getElementById('confirmCancelBtn').addEventListener('click', function() {
+        closeSettingsModal();
+        if (typeof opts.onCancel === 'function') opts.onCancel();
+      });
+      document.getElementById('confirmOverlay').addEventListener('click', function(e) {
+        if (e.target === this) {
+          closeSettingsModal();
+          if (typeof opts.onCancel === 'function') opts.onCancel();
+        }
+      });
+    }
+
     /* ── Subtask CRUD ── */
     function addSubtask(taskId, text) {
       var task = state.tasks.find(function(t) { return t.id === taskId; }); if (!task) return;
@@ -2269,7 +2354,7 @@
           metaHtml += '<span class="subtask-count-badge">\u2610 '+subDone+'/'+task.subtasks.length+'</span>';
         }
         if (task.done && task.completedAt) {
-          var daysLeft = Math.ceil((task.completedAt + 30*86400000 - Date.now()) / 86400000);
+          var daysLeft = Math.ceil((task.completedAt + getAutoDeleteDays(state)*86400000 - Date.now()) / 86400000);
           if (daysLeft > 0) metaHtml += '<span class="auto-delete-badge">\u{1F5D1} auto-deletes in ' + daysLeft + 'd</span>';
         }
         metaHtml += '<span class="task-points">' + (task.done ? '+' + calcTaskXP(task) + ' XP earned' : calcTaskXP(task) + ' XP') + '</span>';
